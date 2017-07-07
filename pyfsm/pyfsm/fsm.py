@@ -5,35 +5,41 @@ Created on Jul 7, 2017
 '''
 from queue import Queue
 from logging import getLogger
-from threading import Thread
+from threading import Timer, Thread, current_thread
 
-class NStateMachine(object):
+class NStateMachine(Thread):
     state_clss = []
-    state_inst = []
     logger = getLogger(None)
+    entry_event = 'NENTRY'
+    exit_event = 'NEXIT'
+    init_event = 'NINIT'
+    null_event = 'NNULL'
     
-    def __init__(self, init_state = None, queue_size = 16):
+    def __init__(self, init_state=None, queue_size=64):
+        super().__init__(name=self.__class__.__name__, daemon=True)
         self._queue = Queue(queue_size)
-        self._state = init_state
-        self._thread = Thread(target=self.__runnable)
-        self._should_run = True
-        
+        self._states = []
+        self._ENTRY_EVENT = NEvent(self.entry_event)
+        self._EXIT_EVENT = NEvent(self.exit_event)
+        self._INIT_EVENT = NEvent(self.init_event)
+        self._NULL_EVENT = NEvent(self.null_event)
+                
         self.logger.info('{} {} is initial state'. \
-                         format(self.__class__.__name__, \
-                                self.state_clss[0].__name__))
+            format(self.name, self.state_clss[0].__name__))
         
         for state_cls in self.state_clss:
             self.logger.info('{} initializing {}'. \
-                             format(self.__class__.__name__, state_cls.__name__))
-            instance = state_cls()
-            instance.logger = self.logger
-            instance.state_machine = self
-            self.state_inst += [instance]
+                format(self.name, state_cls.__name__))
+            self._states += [state_cls(state_cls.__name__, self, self.logger)]
             
-        self._state = self.state_inst[0]
-        self._queue.put(_INIT_EVENT)
-        self._thread.start()
+        self.state = self._states[0] if init_state is None \
+            else self._map_to_state(init_state)
+        self._queue.put(self._INIT_EVENT)
+        self.start()
         
+    def _map_to_state(self, state_cls):
+        return self._states[self.state_clss.index(state_cls)]
+    
     def _exec_state(self, state, event):
         
         try:
@@ -43,45 +49,61 @@ class NStateMachine(object):
         new_state = state_fn(event)
         
         if new_state:
-            new_state = self.state_inst[self.state_clss.index(new_state)]
+            new_state = self._map_to_state(new_state)
         return new_state
             
-    def __runnable(self):
-        while self._should_run:
+    def run(self):
+        while True:
             event = self._queue.get()
+            
+            if event is None:
+                self.logger.info('{} terminating'. \
+                    format(self.name))
+                self._queue.task_done()
+                return
+            
             self.logger.debug('{} {}({})'. \
-                format(self.__class__.__name__, self._state.__class__.__name__,
-                       event.name))
-            new_state = self._exec_state(self._state, event)
+                format(self.name, self.state.name, event.name))
+            new_state = self._exec_state(self.state, event)
         
             while new_state:
                 self.logger.debug('{} {} -> {}'. \
-                    format(self.__class__.__name__, 
-                           self._state.__class__.__name__,
-                           new_state.__class__.__name__))
-                self._exec_state(self._state, _EXIT_EVENT)
-                self._state = new_state
-                self._exec_state(self._state, _ENTRY_EVENT)
-                new_state = self._exec_state(self._state, _INIT_EVENT)
+                    format(self.name, self.state.name, new_state.name))
+                self._exec_state(self.state, self._EXIT_EVENT)
                 
-    def put(self, event):
-        assert issubclass(event.__class__, NEvent), \
-            'The class {} is not subclass of {} class'. \
-            format(event.name, NEvent.__name__)
-        self._queue.put(event)
-
+                for resource in self.state.resources:
+                    self.logger.debug('{} deleting resource {}'. \
+                        format(self.name, resource.name))
+                    resource.release()
+                self.state.resources = []
+                self.state = new_state
+                self._exec_state(self.state, self._ENTRY_EVENT)
+                new_state = self._exec_state(self.state, self._INIT_EVENT)
+            self._queue.task_done()
+            
+    def put(self, event, block = True, timeout = None):
+        if not issubclass(event.__class__, NEvent):
+            msg = 'The class {} is not subclass of {} class'. \
+                  format(event.__class__.__name__, NEvent.__name__)
+            self.logger.critical(msg)
+            raise TypeError(msg)    
+        self._queue.put(event, block, timeout)
+        
+    def release(self, timeout=None):
+        self._queue.put(None, timeout=timeout)
+        self.join(timeout)
 
 class NState(object):
     
-    def __init__(self):
-        self.logger = None
-        self.state_machine = None
+    def __init__(self, name=None, sm=None, logger=None):
+        self.name = name
+        self.sm = sm
+        self.logger = logger
+        self.resources = []
         
     def default_handler(self, event):
-        self.logger.debug('{} {}({}) wasn\'t handled'.
-                          format(self.state_machine.__class__.__name__,
-                                 self.__class__.__name__,
-                                 event.name))
+        self.logger.warn('{} {}({}) wasn\'t handled'.
+            format(self.sm.name, self.name, event.name))
         return None
     
     
@@ -106,10 +128,35 @@ class NStateDeclare(object):
         
         
 class NEvent(object):
-    def __init__(self, name = None, producer = None):
+    def __init__(self, name = None):
         self.name = name if name else self.__class__.__name__
-        self.producer = producer
+        self.producer = current_thread()
 
-_ENTRY_EVENT = NEvent('NENTRY')
-_EXIT_EVENT = NEvent('NEXIT')
-_INIT_EVENT = NEvent('NINIT')
+
+class NTimerAfter(object):
+    def __init__(self, after, event, local=False):
+        self.timeo = after
+        self.event = event
+        self.name = 'NTimerEvery({}, \'{}\')'.format(after, event.name)
+        self.sm = current_thread()
+        
+        if local:
+            self.sm.state.resources += [self]
+        self.timer = Timer(after, self.function, [self.event])
+        self.timer.start()
+        
+    def function(self, *args, **kwargs):
+        self.sm.put(*args)
+        
+    def release(self):
+        self.timer.cancel()
+        
+class NTimerEvery(NTimerAfter):
+    def __init__(self, every, event, local=False):
+        super().__init__(every, event, local)
+        
+    def function(self, *args, **kwargs):
+        super().function(*args, **kwargs)
+        self.timer = Timer(self.timeo, self.function, [self.event])
+        self.timer.start()
+        
