@@ -4,17 +4,17 @@ Created on Jul 7, 2017
 @author: nenad
 '''
 
-from pyfsm.fsm import NStateMachine, NState, NStateDeclare, NEvent, NTimerAfter, NTimerEvery
+from pyeds import fsm
 from logging import basicConfig, DEBUG, getLogger
 from time import sleep
 
 basicConfig(level=DEBUG)
 
-class MyStateMachine(NStateMachine):
+class MyStateMachine(fsm.StateMachine):
     logger = getLogger('app')
 
-@NStateDeclare(MyStateMachine)
-class StateInitial(NState):
+@fsm.DeclareState(MyStateMachine)
+class StateInitial(fsm.State):
     def NENTRY(self, event):
         pass
         
@@ -24,18 +24,18 @@ class StateInitial(NState):
     def NINIT(self, event):
         return StateIdle
 
-@NStateDeclare(MyStateMachine)
-class StateIdle(NState):
+@fsm.DeclareState(MyStateMachine)
+class StateIdle(fsm.State):
     def NENTRY(self, event):    
-        NTimerAfter(3, NEvent('start'))
-        NTimerAfter(5, NEvent('dummy!!!'), local=True)
-        NTimerEvery(2, NEvent('eveeer'))
+        fsm.After(3, fsm.Event('start'))
+        fsm.After(5, fsm.Event('dummy!!!'), is_local=True)
+        fsm.Every(2, fsm.Event('eveeer'))
         
     def start(self, event):
         return StateOn
     
-@NStateDeclare(MyStateMachine)
-class StateOn(NState):
+@fsm.DeclareState(MyStateMachine)
+class StateOn(fsm.State):
     def NENTRY(self, event):
         self.logger.info('ON')
         
@@ -45,8 +45,8 @@ class StateOn(NState):
     def off(self, event):
         return StateOff
     
-@NStateDeclare(MyStateMachine)
-class StateOff(NState):
+@fsm.DeclareState(MyStateMachine)
+class StateOff(fsm.State):
     def NENTRY(self, event):
         self.logger.info('OFF')
         
@@ -61,9 +61,9 @@ def main():
     
     try:
         while True:
-            my_state_machine.put(NEvent('on'))
+            my_state_machine.put(fsm.Event('on'))
             sleep(0.5)
-            my_state_machine.put(NEvent('off'))
+            my_state_machine.put(fsm.Event('off'))
             sleep(0.5)
     except KeyboardInterrupt:
         my_state_machine.release()
