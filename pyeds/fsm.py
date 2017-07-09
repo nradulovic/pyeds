@@ -87,22 +87,29 @@ class StateMachine(Thread):
         return self._map_to_state(new_state)
             
     def run(self):
+        '''Run this state machine
+        
+        This method is executed automatically by class constructor.
+
+        '''
+        # Overridden run() method of Thread class
         while True:
             event = self._queue.get()
+            # Check should we exit 
             if event is None:
                 self.logger.info('{} terminating'.format(self.name))
                 self._queue.task_done()
                 return
-            
             self.logger.debug(
                     '{} {}({})'.format(self.name, self.state.name, event.name))
             new_state = self._exec_state(self.state, event)
+            # Loop while new transitions are needed
             while new_state is not None:
                 self.logger.debug(
                         '{} {} -> {}'. \
                         format(self.name, self.state.name, new_state.name))
                 self._exec_state(self.state, self._EXIT_EVENT)
-                
+                # Release any resource associated with current state
                 for resource in self.state.resources:
                     self.logger.debug(
                             '{} deleting resource {}'. \
@@ -117,12 +124,8 @@ class StateMachine(Thread):
     def put(self, event, block = True, timeout = None):
         '''Put an event to this state machine
 
-        A condition variable allows one or more threads to wait until they are
-        notified by another thread.
-
-        If the lock argument is given and not None, it must be a Lock or RLock
-        object, and it is used as the underlying lock. Otherwise, a new RLock object
-        is created and used as the underlying lock.
+        The event is put to state machine queue and then the run() method is
+        invoked to process queued events.
 
         '''
         if not issubclass(event.__class__, Event):
@@ -138,7 +141,12 @@ class StateMachine(Thread):
 
 
 class State(object):
-    
+    '''This class implements a state.
+
+    Each state is represented by a class. Every method of this class processes
+    different events.
+
+    '''
     def __init__(self, name=None, sm=None, logger=None):
         self.name = name
         self.sm = sm
@@ -146,6 +154,11 @@ class State(object):
         self.resources = []
         
     def default_handler(self, event):
+        '''Default event handler
+        
+        This handler gets executed in case the state does not handle an event.
+        
+        '''
         self.logger.warn(
                 '{} {}({}) wasn\'t handled'.
                 format(self.sm.name, self.name, event.name))
@@ -153,6 +166,11 @@ class State(object):
     
     
 class DeclareState(object):
+    '''This is a decorator class which binds a state with a state machine.
+
+    Use this decorator class to bind states to a state machine.
+
+    '''
     def __init__(self, state_machine_cls):
         assert state_machine_cls is not StateMachine, \
                 'Make specific state machine class from {}'. \
