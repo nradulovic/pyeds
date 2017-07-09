@@ -34,6 +34,7 @@ class StateMachine(Thread):
     
     def __init__(self, init_state=None, queue_size=64):
         '''This constructor should always be called with keyword arguments. 
+        
         Arguments are:
 
         *init_state* is a subclass of State class that implement the behaviour
@@ -156,7 +157,7 @@ class State(object):
     def default_handler(self, event):
         '''Default event handler
         
-        This handler gets executed in case the state does not handle an event.
+        This handler gets executed in case the state does not handle the event.
         
         '''
         self.logger.warn(
@@ -190,17 +191,31 @@ class DeclareState(object):
         
         
 class Event(object):
+    '''Event class
+    
+    An event is the only means of communication between state machines. Each 
+    event carries name. Based on the event name a handler will be called from 
+    current state class which has the same name.
+    
+    '''  
     def __init__(self, name = None):
+        '''Using this constructor ensures that each event will be tagged with
+        additional information.
+        
+        Arguments are:
+        *name* is a string representing event name.
+        '''
         self.name = name if name is not None else self.__class__.__name__
         self.producer = current_thread()
 
 
 class After(object):
-    """Put an event after a specified number of seconds:
+    '''Put an event to current state machine after a specified number of seconds
 
-            t = fsm.After(10.0, fsm.Event('event_name'))
+    Example usage:
+            fsm.After(10.0, fsm.Event('blink'))
 
-    """
+    '''
     def __init__(self, after, event, is_local=False):
         self.timeo = after
         self.event = event
@@ -220,6 +235,13 @@ class After(object):
         
         
 class Every(After):
+    '''Put an event to current state machine every time a specified number of 
+    seconds passes
+
+    Example usage:
+            fsm.Every(10.0, fsm.Event('blink'))
+
+    '''
     def __init__(self, every, event, local=False):
         super().__init__(every, event, local)
         
