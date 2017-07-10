@@ -38,8 +38,8 @@ class StateMachine(Thread):
         Arguments are:
 
         *init_state* is a subclass of State class that implement the behaviour
-        for a specific state. The default value is None which means that the
-        first state that was initialized will be initial state.
+        for initial state. The default value is None which means that the first 
+        state that was declared will be initial state.
 
         *queue_size* is an integer specifying what is the maximum event queue
         size.
@@ -60,18 +60,24 @@ class StateMachine(Thread):
         for state_cls in self.state_clss:
             self.logger.info(
                     '{} initializing {}'.format(self.name, state_cls.__name__))
-            self._states += [state_cls(state_cls.__name__, self, self.logger)]
+            self._states += [state_cls(
+                    name=state_cls.__name__, sm=self, logger=self.logger)]
         # NOTE:
-        # If we were called without initial state argument then implicitly 
-        # declare the first state as initialization state. 
+        # If we were called without initial state argument then implicitly set
+        # the first declared state as initialization state. 
         if init_state is None:
             self.state = self._states[0]
         else:
             self.state = self._map_to_state(init_state)
         self.logger.info(
                 '{} {} is initial state'.format(self.name, self.state.name))
-        # Put a INIT event and start the FSM   
-        self._queue.put(self._INIT_EVENT)
+        self._build_hierarchy()
+        # Decide do we need full HSM support or not
+        if self.hierarchy_level > 1:
+            self._dispatch = self._dispatch_hsm
+        else:
+            self._dispatch = self._dispatch_fsm
+        # Start the FSM   
         self.start()
         
     def _map_to_state(self, state_cls):
@@ -86,13 +92,43 @@ class StateMachine(Thread):
         except AttributeError:
             new_state = state.default_handler(event)
         return self._map_to_state(new_state)
+    
+    def _build_hierarchy(self):
+        self.hierarchy_level = 1 
+            
+    def _release_state_resources(self):
+        # Release any resource associated with current state
+        for resource in self.state.resources:
+            self.logger.debug(
+                    '{} deleting resource {}'.format(self.name, resource.name))
+            resource.release()
+        self.state.resources = []
+        
+    def _dispatch_hsm(self, event):
+        pass
+    
+    def _dispatch_fsm(self, event):
+        new_state = self._exec_state(self.state, event)
+        # Loop while new transitions are needed
+        while new_state is not None:
+            self.logger.debug(
+                    '{} {} -> {}'. \
+                    format(self.name, self.state.name, new_state.name))
+            self._exec_state(self.state, self._EXIT_EVENT)
+            self._release_state_resources()           
+            self.state = new_state
+            self._exec_state(self.state, self._ENTRY_EVENT)
+            new_state = self._exec_state(self.state, self._INIT_EVENT)
             
     def run(self):
-        '''Run this state machine
+        '''Run this state machine as finite state machine with single level 
+        hierarchy.
         
         This method is executed automatically by class constructor.
 
         '''
+        # Initialize the state machine
+        self._dispatch(self._INIT_EVENT)
         # Overridden run() method of Thread class
         while True:
             event = self._queue.get()
@@ -103,30 +139,14 @@ class StateMachine(Thread):
                 return
             self.logger.debug(
                     '{} {}({})'.format(self.name, self.state.name, event.name))
-            new_state = self._exec_state(self.state, event)
-            # Loop while new transitions are needed
-            while new_state is not None:
-                self.logger.debug(
-                        '{} {} -> {}'. \
-                        format(self.name, self.state.name, new_state.name))
-                self._exec_state(self.state, self._EXIT_EVENT)
-                # Release any resource associated with current state
-                for resource in self.state.resources:
-                    self.logger.debug(
-                            '{} deleting resource {}'. \
-                            format(self.name, resource.name))
-                    resource.release()
-                self.state.resources = []
-                self.state = new_state
-                self._exec_state(self.state, self._ENTRY_EVENT)
-                new_state = self._exec_state(self.state, self._INIT_EVENT)
+            self._dispatch(event)
             self._queue.task_done()
             
     def put(self, event, block = True, timeout = None):
         '''Put an event to this state machine
 
-        The event is put to state machine queue and then the run() method is
-        invoked to process queued events.
+        The event is put to state machine queue and then the run() method will
+        be unblocked to process queued events.
 
         '''
         if not issubclass(event.__class__, Event):
@@ -148,6 +168,8 @@ class State(object):
     different events.
 
     '''
+    super_state = None
+    
     def __init__(self, name=None, sm=None, logger=None):
         self.name = name
         self.sm = sm
