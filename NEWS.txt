@@ -1,0 +1,33 @@
+.. This is the project NEWS file which will contain the release notes.
+
+News
+====
+
+0.4
+---
+
+ *Release data: 17-July-2017*
+
+ * Fixed StateMachine class appending of new states
+
+0.3
+---
+
+*Release date: 11-July-2017*
+
+* Some minor documentation update
+
+0.2
+---
+
+*Release date: 11-July-2017*
+
+* Some minor documentation update
+
+0.1
+---
+
+*Release date: 11-July-2017*
+
+* First release
+

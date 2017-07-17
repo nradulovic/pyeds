@@ -1,19 +1,17 @@
 '''
-Created on Jul 7, 2017
+Finite State Machine (FSM)
 
-@author: nenad
+Created on Jul 7, 2017
 '''
 
-__all__ = ['StateMachine', 'State', 'DeclareState', 'Event', 'After', 'Every']
-__version__ = '0.1'
-__author__ = 'Nenad Radulovic'
+__author__ = 'Nenad Radulovic <nenad.b.radulovic@gmail.com>'
 
-from queue import Queue
-from logging import getLogger
-from threading import Timer, Thread, current_thread
+import queue
+import logging
+import threading
 
 
-class StateMachine(Thread):
+class StateMachine(threading.Thread):
     '''This class implements a state machine.
 
     This class is a controller class of state machine.
@@ -25,8 +23,7 @@ class StateMachine(Thread):
     used.
 
     '''
-    state_clss = []
-    logger = getLogger(None)
+    logger = logging.getLogger(None)
     entry_event = 'NENTRY'
     exit_event = 'NEXIT'
     init_event = 'NINIT'
@@ -50,7 +47,7 @@ class StateMachine(Thread):
 
         '''
         super().__init__(name=self.__class__.__name__, daemon=True)
-        self._queue = Queue(queue_size)
+        self._queue = queue.Queue(queue_size)
         self._states = []
         self._ENTRY_EVENT = Event(self.entry_event)
         self._EXIT_EVENT = Event(self.exit_event)
@@ -62,12 +59,16 @@ class StateMachine(Thread):
                     '{} initializing {}'.format(self.name, state_cls.__name__))
             self._states += [state_cls(
                     name=state_cls.__name__, sm=self, logger=self.logger)]
-        # NOTE:
         # If we were called without initial state argument then implicitly set
         # the first declared state as initialization state. 
         if init_state is None:
             self.state = self._states[0]
         else:
+            # Check if init_state is endeed a State class
+            if not isinstance(init_state, State):
+                raise TypeError(
+                        'init_state argument \'{!r}\' is not a '
+                        'subclass of State class'.format(init_state))
             self.state = self._map_to_state(init_state)
         self.logger.info(
                 '{} {} is initial state'.format(self.name, self.state.name))
@@ -207,7 +208,11 @@ class DeclareState(object):
         assert issubclass(state_cls, State), \
                 'The class {} is not subclass of {} class'. \
                 format(state_cls.__name__, State.__name__)
-        self.state_machine_cls.state_clss += [state_cls]
+        try:
+            self.state_machine_cls.state_clss += [state_cls]
+        except AttributeError:
+            # Add new attribute if it doesn't exist
+            self.state_machine_cls.state_clss = [state_cls]
         
         return state_cls
         
@@ -228,7 +233,7 @@ class Event(object):
         *name* is a string representing event name.
         '''
         self.name = name if name is not None else self.__class__.__name__
-        self.producer = current_thread()
+        self.producer = threading.current_thread()
 
 
 class After(object):
@@ -243,10 +248,10 @@ class After(object):
         self.event = event
         self.name = '{}({}, \'{}\')'.format(
                 self.__class__.__name__, after, event.name)
-        self.sm = current_thread()
+        self.sm = threading.current_thread()
         if is_local:
             self.sm.state.resources += [self]
-        self.timer = Timer(after, self.function, [self.event])
+        self.timer = threading.Timer(after, self.function, [self.event])
         self.timer.start()
         
     def function(self, *args, **kwargs):
@@ -269,6 +274,6 @@ class Every(After):
         
     def function(self, *args, **kwargs):
         super().function(*args, **kwargs)
-        self.timer = Timer(self.timeo, self.function, [self.event])
+        self.timer = threading.Timer(self.timeo, self.function, [self.event])
         self.timer.start()
         
