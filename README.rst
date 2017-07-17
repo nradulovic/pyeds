@@ -22,9 +22,10 @@ How to use it
 -------------
 
 The basic routine to create a state machine is the following:
- 1. Declare a FSM class 
- 2. Declare all state classes
- 3. Instantiate FSM class
+
+1. Declare a FSM class 
+2. Declare all state classes
+3. Instantiate FSM class
  
 Declaring a FSM class
 ^^^^^^^^^^^^^^^^^^^^^
@@ -34,7 +35,8 @@ below) and do the transitions between states. Each FSM must declare it's own
 class which is a subclass of ``StateMachine``. The simplest way is to just
 declare a empty class which inherits the ``StateMacine``:
 
-:: 
+.. code-block:: python
+
     from pyeds import fsm
     
     class MyFsm(fsm.StateMachine):
@@ -50,7 +52,8 @@ with ``DeclareState`` decorator which state machine as an argument. This
 decorator binds the state class to a specific FSM class. Also, the new class
 must be a subclass of ``State`` class:
 
-::
+.. code-block:: python
+
     @fsm.DeclareState(MyFsm)
     class MyState(fsm.State):
         pass
@@ -62,7 +65,8 @@ Instantiating the FSM
 
 To instantiate the FSM class do the following:
 
-::
+.. code-block:: python
+
     my_fsm = MyFsm()
     
 After object initialization the FSM is put into running state.
@@ -77,7 +81,8 @@ messages. The FSM has 2 states:
   1. State On
   2. State Off
  
-::   
+::
+
     *----+
          |
      On  v                Off
@@ -92,7 +97,8 @@ The event ``blink`` is used to trigger transitions between the states.
 
 The first step is to declare a class which represent custom FSM.
 
-::
+.. code-block:: python
+
     from pyeds import fsm
     
     class BlinkyFsm(fsm.StateMachine):
@@ -100,7 +106,8 @@ The first step is to declare a class which represent custom FSM.
 
 The second step is to start writing the states of new state machine:
 
-::
+.. code-block:: python
+
     @fsm.DeclareState(BlinkyFsm)
     class Initialization(fsm.State):
         def NINIT(self, event):
@@ -125,7 +132,8 @@ The second step is to start writing the states of new state machine:
 
 The final step is to instantiate the FSM class defined in the first step.
 
-::
+.. code-block:: python
+
     blinky_fsm = BlinkyFsm()
 
 After creation the FSM is automatically put into a running state.
@@ -133,5 +141,6 @@ After creation the FSM is automatically put into a running state.
 Source
 ------
 
-Source is available at github
-:: _GitHub: https:
+Source is available at github:
+
+:: _GitHub: https://github.com/nradulovic/pyeds
