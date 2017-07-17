@@ -78,8 +78,8 @@ The following is an example of FSM which is called Blinky. The FSM will print
 'on' text and 'off' text on console with 0.5 seconds of delay between the 
 messages. The FSM has 2 states:
 
-  1. State On
-  2. State Off
+1. State On
+2. State Off
  
 ::
 
