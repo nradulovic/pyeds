@@ -11,6 +11,58 @@ import logging
 import threading
 
 
+class _PathManager(object):
+    def __init__(self):
+        self.depth = 1
+        self.nodes = []
+    
+    def add_node(self, node):
+        self.nodes.append(node)
+        path = self._build_node_depth(node)
+        if len(path) > self.depth:
+            self.depth = len(path)
+        
+    def _build_node_depth(self, node):
+        node_depth = []
+        
+        while node is not None:
+            node_depth.append(node)
+            node = node._parent
+            
+        return node_depth
+    
+    def build_path(self, source, destination):
+        path = _Path()
+        # NOTE: Transition type A
+        if source == destination:
+            path.enter.append(destination)
+            path.exit.append(source)
+            return path
+        source_path = self._build_node_depth(source)
+        destination_path = self._build_node_depth(destination)
+        for source_state in source_path:
+            path.enter.clear()
+            for destination_state in destination_path:
+                if source_state == destination_state:
+                    path.enter.reverse()
+                    return path
+                path.enter.append(destination_state)
+            path.exit.append(source_state)
+        # This means that states do not share common ancestor
+        path.enter.reverse() 
+        return path
+    
+
+class _PathNode(object):
+    _parent = None
+    
+    
+class _Path(object):
+    def __init__(self):
+        self.exit = []
+        self.enter = []
+        
+
 class StateMachine(threading.Thread):
     '''This class implements a state machine.
 
@@ -48,31 +100,40 @@ class StateMachine(threading.Thread):
         '''
         super().__init__(name=self.__class__.__name__, daemon=True)
         self._queue = queue.Queue(queue_size)
-        self._states = []
+        self._states = {}
         self._ENTRY_EVENT = Event(self.ENTRY_EVENT)
         self._EXIT_EVENT = Event(self.EXIT_EVENT)
         self._INIT_EVENT = Event(self.INIT_EVENT)
         self._NULL_EVENT = Event(self.NULL_EVENT)
+        
         # This for loop will instantiate all state classes
         for state_cls in self.state_clss:
             self.logger.info(
                     '{} initializing {}'.format(self.name, state_cls.__name__))
-            self._states += [state_cls(
-                    name=state_cls.__name__, sm=self, logger=self.logger)]
+            self._states[state_cls] = state_cls(
+                    name=state_cls.__name__, 
+                    sm=self, 
+                    logger=self.logger)
+        # Setup super states
+        for state in self._states.values():
+            state._parent = self._states.get(state.super_state)
         # If we were called without initial state argument then implicitly set
         # the first declared state as initialization state. 
         if init_state is None:
-            self.state = self._states[0]
+            self.state = self._states[self.state_clss[0]]
         else:
             # Check if init_state is endeed a State class
             if not isinstance(init_state, State):
                 raise TypeError(
                         'init_state argument \'{!r}\' is not a '
                         'subclass of State class'.format(init_state))
-            self.state = self._map_to_state(init_state)
-        self.logger.info(
-                '{} {} is initial state'.format(self.name, self.state.name))
+            self.state = self._states[init_state]
         self._build_hierarchy()
+        self.logger.info(
+                '{} hierarchy is {} level(s) deep'.format(
+                        self.name, 
+                        self.hierarchy_level))
+        
         # Decide do we need full HSM support or not
         if self.hierarchy_level > 1:
             self._dispatch = self._dispatch_hsm
@@ -81,33 +142,52 @@ class StateMachine(threading.Thread):
         # Start the FSM   
         self.start()
         
-    def _map_to_state(self, state_cls):
-        try:
-            return self._states[self.state_clss.index(state_cls)]
-        except ValueError:
-            return None
-    
-    def _exec_state(self, state, event):
+    def _exec_event_handler(self, state, event):
         event_handler = getattr(
                 state, 
                 'on_{}'.format(event.name), 
                 state.on_unhandled_event)
-        new_state = event_handler(event)
-        return self._map_to_state(new_state)
+        return event_handler(event)
+        
+    def _exec_state(self, state, event):
+        new_state_cls = self._exec_event_handler(state, event)
+        if new_state_cls is not None:
+            return self._states[new_state_cls]
     
     def _build_hierarchy(self):
-        self.hierarchy_level = 1 
+        self.path = _PathManager()
+        for state in self._states.values():
+            self.path.add_node(state)
+        
+    @property
+    def hierarchy_level(self):
+        return self.path.depth
             
-    def _release_state_resources(self):
+    def _release_state_resources(self, state):
         # Release any resource associated with current state
-        for resource in self.state.resources:
+        for resource in state.resources:
             self.logger.debug(
                     '{} deleting resource {}'.format(self.name, resource.name))
             resource.release()
-        self.state.resources = []
+        state.resources = []
         
     def _dispatch_hsm(self, event):
-        pass
+        new_state = self._exec_state(self.state, event)
+        # Loop while new transitions are needed
+        while new_state is not None:
+            self.logger.debug(
+                    '{} {} -> {}'. \
+                    format(self.name, self.state.name, new_state.name))
+            path = self.path.build_path(self.state, new_state)
+            # Exit the pathnew_state
+            for exit_state in path.exit:
+                self._exec_state(exit_state, self._EXIT_EVENT)
+                self._release_state_resources(exit_state)
+            # Enter the path
+            for enter_state in path.enter:
+                self._exec_state(enter_state, self._ENTRY_EVENT)
+            self.state = new_state
+            new_state = self._exec_state(self.state, self._INIT_EVENT)
     
     def _dispatch_fsm(self, event):
         new_state = self._exec_state(self.state, event)
@@ -117,11 +197,21 @@ class StateMachine(threading.Thread):
                     '{} {} -> {}'. \
                     format(self.name, self.state.name, new_state.name))
             self._exec_state(self.state, self._EXIT_EVENT)
-            self._release_state_resources()           
+            # Release allocated resources
+            self._release_state_resources(self.state)           
+            self._exec_state(new_state, self._ENTRY_EVENT)
             self.state = new_state
-            self._exec_state(self.state, self._ENTRY_EVENT)
             new_state = self._exec_state(self.state, self._INIT_EVENT)
             
+    def dispatch_to_super(self, this_state, event):
+        if this_state._parent is not None:
+            return self._exec_event_handler(this_state._parent, event)
+        else:
+            self.logger.warn(
+                    '{} event \'{}\' was not handled'.format(
+                            self.name,
+                            event.name))
+    
     def run(self):
         '''Run this state machine as finite state machine with single level 
         hierarchy.
@@ -144,7 +234,7 @@ class StateMachine(threading.Thread):
             self._dispatch(event)
             self._queue.task_done()
             
-    def put(self, event, block = True, timeout = None):
+    def put(self, event, block=True, timeout=None):
         '''Put an event to this state machine
 
         The event is put to state machine queue and then the run() method will
@@ -160,10 +250,12 @@ class StateMachine(threading.Thread):
         
     def release(self, timeout=None):
         self._queue.put(None, timeout=timeout)
+        
+    def wait(self, timeout=None):
         self.join(timeout)
 
 
-class State(object):
+class State(_PathNode):
     '''This class implements a state.
 
     Each state is represented by a class. Every method of this class processes
@@ -179,15 +271,15 @@ class State(object):
         self.resources = []
         
     def on_unhandled_event(self, event):
-        '''Default event handler
+        '''Unhandled event handler
         
         This handler gets executed in case the state does not handle the event.
         
         '''
-        self.logger.warn(
+        self.logger.info(
                 '{} {}({}) wasn\'t handled'.
                 format(self.sm.name, self.name, event.name))
-        return None
+        return self.sm.dispatch_to_super(self, event)
     
     
 class DeclareState(object):
