@@ -24,10 +24,10 @@ class StateMachine(threading.Thread):
 
     '''
     logger = logging.getLogger(None)
-    entry_event = 'NENTRY'
-    exit_event = 'NEXIT'
-    init_event = 'NINIT'
-    null_event = 'NNULL'
+    entry_event = 'entry'
+    exit_event = 'exit'
+    init_event = 'init'
+    null_event = 'null'
     
     def __init__(self, init_state=None, queue_size=64):
         '''This constructor should always be called with keyword arguments. 
@@ -88,10 +88,11 @@ class StateMachine(threading.Thread):
             return None
     
     def _exec_state(self, state, event):
-        try:
-            new_state = getattr(state, event.name)(event)
-        except AttributeError:
-            new_state = state.default_handler(event)
+        event_handler = getattr(
+                state, 
+                'on_{}'.format(event.name), 
+                state.on_unhandled_event)
+        new_state = event_handler(event)
         return self._map_to_state(new_state)
     
     def _build_hierarchy(self):
@@ -177,7 +178,7 @@ class State(object):
         self.logger = logger
         self.resources = []
         
-    def default_handler(self, event):
+    def on_unhandled_event(self, event):
         '''Default event handler
         
         This handler gets executed in case the state does not handle the event.
