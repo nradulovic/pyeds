@@ -312,7 +312,7 @@ class Event(object):
     current state class which has the same name.
     
     '''  
-    def __init__(self, name = None):
+    def __init__(self, name=None):
         '''Using this constructor ensures that each event will be tagged with
         additional information.
         
@@ -326,6 +326,11 @@ class Event(object):
 class Resource(object):
     '''Resource which is associated with current state machine
     
+    Arguments are:
+    *args* is a string representing resource arguments. This string is used to
+    auto-generate resource name.
+    *is_local* is boolean which defines if this resource is only local to 
+    current state. 
     '''
     def __init__(self, args, is_local):
         self.name = '{}({})'.format(self.__class__.__name__, args)
