@@ -11,7 +11,6 @@ except ImportError:
     from pyeds import fsm
     
 from logging import basicConfig, DEBUG, getLogger
-from time import sleep
 import sys
 
 basicConfig(level=DEBUG)
@@ -216,12 +215,10 @@ def main():
         ]
     try:
         for signal in test_input_sequence:
-            print('## SIGNAL {} ##'.format(signal))
             sm.put(fsm.Event(signal))
     except KeyboardInterrupt:
         sm.release()
-    while True:
-        pass
+    sm.wait()
 
 if __name__ == '__main__':
     main()
