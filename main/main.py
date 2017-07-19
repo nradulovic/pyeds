@@ -15,45 +15,45 @@ class MyStateMachine(fsm.StateMachine):
 
 @fsm.DeclareState(MyStateMachine)
 class StateInitial(fsm.State):
-    def NENTRY(self, event):
+    def on_entry(self, event):
         pass
         
-    def NEXIT(self, event):
+    def on_exit(self, event):
         pass
         
-    def NINIT(self, event):
+    def on_init(self, event):
         return StateIdle
 
 @fsm.DeclareState(MyStateMachine)
 class StateIdle(fsm.State):
-    def NENTRY(self, event):    
+    def on_entry(self, event):    
         fsm.After(3, fsm.Event('start'))
         fsm.After(5, fsm.Event('dummy!!!'), is_local=True)
         fsm.Every(2, fsm.Event('eveeer'))
         
-    def start(self, event):
+    def on_start(self, event):
         return StateOn
     
 @fsm.DeclareState(MyStateMachine)
 class StateOn(fsm.State):
-    def NENTRY(self, event):
+    def on_entry(self, event):
         self.logger.info('ON')
         
-    def on(self, event):
+    def on_on(self, event):
         return StateOn
     
-    def off(self, event):
+    def on_off(self, event):
         return StateOff
     
 @fsm.DeclareState(MyStateMachine)
 class StateOff(fsm.State):
-    def NENTRY(self, event):
+    def on_entry(self, event):
         self.logger.info('OFF')
         
-    def on(self, event):
+    def on_on(self, event):
         return StateOn
     
-    def off(self, event):
+    def on_off(self, event):
         return StateOff
 
 def main():
