@@ -138,6 +138,62 @@ The final step is to instantiate the FSM class defined in the first step.
 
 After creation the FSM is automatically put into a running state.
 
+Event
+-----
+
+An event is a notable occurrence at a particular point in time. Events can, but
+do not necessarily, cause state transitions from one state to another in state 
+machines
+
+An event can have associated parameters, allowing the event to convey not only 
+the occurrence but also quantitative information about the occurrence. 
+
+An event in PyEDS is instanced using class Event. The associated parameters with
+an event are:
+
+ * name of the event
+ * producer of event
+ 
+Generate an event
+^^^^^^^^^^^^^^^^^
+
+To generate a new event just instantiate Event class:
+
+.. code-block:: python
+
+    new_event = fsm.Event('event_name')
+    
+Rules about event naming
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+When an event is created and sent to a state machine it's name is used to decide
+which method in current state instance should be invoked. The state machine 
+takes the name of the event, it prepends text ``on_`` to the name string and 
+then it looks up to event handler method.
+
+Example: If an event named ``toggle`` is created and sent to a state machine, 
+the target state machine will lookup for a method named ``on_toggle`` in the 
+current state instance. 
+
+Since the event name directly impacts which state instance method will be called
+the name of events must follow the Python identifier naming rules. 
+
+A Python identifier starts with a letter A to Z or a to z or an underscore (_) 
+followed by zero or more letters, underscores and digits (0 to 9). Python does 
+not allow punctuation characters such as @, $, and % within identifiers. 
+
+.. code-block:: python
+
+    ok_event = fsm.Event('some_event_with_long_name')
+    bad_event = fsm.Event('you cannot use spaces, @, $ and % here')
+    
+Transition
+----------
+
+Switching from one state to another is called state transition. A transition is 
+a set of actions to be executed when a condition is fulfilled or when an event 
+is received.
+
 Source
 ------
 
