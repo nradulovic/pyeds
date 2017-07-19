@@ -110,24 +110,24 @@ The second step is to start writing the states of new state machine:
 
     @fsm.DeclareState(BlinkyFsm)
     class Initialization(fsm.State):
-        def NINIT(self, event):
+        def on_init(self, event):
             fsm.Every(0.5, fsm.Event('blink')
             return StateOn
             
     @fsm.DeclareState(BlinkFsm)
     class StateOn(fsm.State):
-        def NENTRY(self, event):
+        def on_entry(self, event):
             print('on')
             
-        def blink(self, event):
+        def on_blink(self, event):
             return StateOff
             
     @fsm.DeclareState(BlinkFsm)
     class StateOff(fsm.State):
-        def NENTRY(self, event):
+        def on_entry(self, event):
             print('off')
                 
-        def blink(self, event):
+        def on_blink(self, event):
             return StateOn
 
 The final step is to instantiate the FSM class defined in the first step.
