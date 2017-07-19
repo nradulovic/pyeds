@@ -95,18 +95,18 @@ messages. The FSM has 2 states:
 
 The event ``blink`` is used to trigger transitions between the states.
 
-The first step is to declare a class which represent custom FSM.
-
 .. code-block:: python
 
     from pyeds import fsm
-    
+
+
+    # The first step is to declare a class which represent custom FSM.
+        
     class BlinkyFsm(fsm.StateMachine):
         pass
 
-The second step is to start writing the states of new state machine:
 
-.. code-block:: python
+    # The second step is to start writing the states of new state machine:
 
     @fsm.DeclareState(BlinkyFsm)
     class Initialization(fsm.State):
@@ -130,9 +130,8 @@ The second step is to start writing the states of new state machine:
         def on_blink(self, event):
             return StateOn
 
-The final step is to instantiate the FSM class defined in the first step.
 
-.. code-block:: python
+    # The final step is to instantiate the FSM class defined in the first step.
 
     blinky_fsm = BlinkyFsm()
 
