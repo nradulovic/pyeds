@@ -237,7 +237,18 @@ class Event(object):
         self.producer = threading.current_thread()
 
 
-class After(object):
+class Resource(object):
+    '''Resource which is associated with current state machine
+    
+    '''
+    def __init__(self, args, is_local):
+        self.name = '{}({})'.format(self.__class__.__name__, args)
+        self.sm = threading.current_thread()
+        if is_local:
+            self.sm.state.resources += [self]
+    
+    
+class After(Resource):
     '''Put an event to current state machine after a specified number of seconds
 
     Example usage:
@@ -245,13 +256,9 @@ class After(object):
 
     '''
     def __init__(self, after, event, is_local=False):
+        super(After, self).__init__('{}, {}'.format(after, event.name), is_local)
         self.timeo = after
         self.event = event
-        self.name = '{}({}, \'{}\')'.format(
-                self.__class__.__name__, after, event.name)
-        self.sm = threading.current_thread()
-        if is_local:
-            self.sm.state.resources += [self]
         self.timer = threading.Timer(after, self.function, [self.event])
         self.timer.start()
         
@@ -270,8 +277,8 @@ class Every(After):
             fsm.Every(10.0, fsm.Event('blink'))
 
     '''
-    def __init__(self, every, event, local=False):
-        super().__init__(every, event, local)
+    def __init__(self, every, event, is_local=False):
+        super().__init__(every, event, is_local)
         
     def function(self, *args, **kwargs):
         super().function(*args, **kwargs)
