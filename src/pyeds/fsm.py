@@ -24,10 +24,10 @@ class StateMachine(threading.Thread):
 
     '''
     logger = logging.getLogger(None)
-    entry_event = 'entry'
-    exit_event = 'exit'
-    init_event = 'init'
-    null_event = 'null'
+    ENTRY_EVENT = 'entry'
+    EXIT_EVENT = 'exit'
+    INIT_EVENT = 'init'
+    NULL_EVENT = 'null'
     
     def __init__(self, init_state=None, queue_size=64):
         '''This constructor should always be called with keyword arguments. 
@@ -49,10 +49,10 @@ class StateMachine(threading.Thread):
         super().__init__(name=self.__class__.__name__, daemon=True)
         self._queue = queue.Queue(queue_size)
         self._states = []
-        self._ENTRY_EVENT = Event(self.entry_event)
-        self._EXIT_EVENT = Event(self.exit_event)
-        self._INIT_EVENT = Event(self.init_event)
-        self._NULL_EVENT = Event(self.null_event)
+        self._ENTRY_EVENT = Event(self.ENTRY_EVENT)
+        self._EXIT_EVENT = Event(self.EXIT_EVENT)
+        self._INIT_EVENT = Event(self.INIT_EVENT)
+        self._NULL_EVENT = Event(self.NULL_EVENT)
         # This for loop will instantiate all state classes
         for state_cls in self.state_clss:
             self.logger.info(
