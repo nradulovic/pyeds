@@ -3,10 +3,20 @@
 News
 ====
 
+0.5
+---
+
+ *Release date: 20-July-2017*
+
+ * Event handlers have 'on_' prefix
+ * Added support for Hierarchical FSM
+ * All state machines are now executed by Hierarchical FSM dispatcher
+ * Removed some error checking, we are using Python's duck taping
+
 0.4
 ---
 
- *Release data: 17-July-2017*
+ *Release date: 17-July-2017*
 
  * Fixed StateMachine class appending of new states
 
