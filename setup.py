@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-import sys, os
+import os
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -13,7 +13,7 @@ README = read('README.rst')
 NEWS = read('NEWS.txt')
 
 
-version = '0.5'
+version = '0.6'
 
 setup(name='pyeds',
     version=version,

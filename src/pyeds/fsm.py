@@ -39,13 +39,16 @@ class _PathManager(object):
     def generate(self, source, destination):
         path = _Path(self._extended_exit)
         self._extended_exit = []
+        print('generate {} -> {}'.format(source.name, destination.name))
         # NOTE: Transition type A, most common transition
         if source == destination:
             path.enter += [destination]
             path.exit += [source]
         else:
             source_path = self._nodes_path_map[source]
+            print('source path: {}'.format(source_path))
             destination_path = self._nodes_path_map[destination]
+            print('dest path: {}'.format(destination_path))
             for source_node in source_path:
                 path.enter = []
                 for destination_node in destination_path:
@@ -73,9 +76,52 @@ class _Path(object):
         
     def commit(self):
         self.enter.reverse()
+        print('exit: {}'.format(self.exit))
+        print('enter: {}'.format(self.enter))
         return self
+    
+class ResourceManager(object):
+    def __init__(self):
+        self._resources = {}
         
+    def add(self, resource_instance):
+        self._resources[resource_instance.name] = resource_instance
+        
+    def get(self, resource_name):
+        return self._resources[resource_name]
+        
+    def remove(self, resource_instance):
+        for resource_key, resource in self._resources.items():
+            if resource == resource_instance:
+                resource.release()
+                self._resources.pop(resource_key)
 
+    def release_all(self):
+        for resource in self._resources.values():
+            resource.release()
+        self._resources = {}
+        
+        
+class ResourceInstance(object):
+    '''ResourceInstance which is associated with current state machine
+    
+    Arguments are:
+    *name* is the name of the resource 
+    '''
+    def __init__(self, name=None):
+        self.name = name if name is not None else self.__class__.__name__
+        producer = current_sm()
+            
+        class ResourceInstanceMethods(object):
+            def __init__(self, producer):
+                self.producer = producer
+                
+            def release(self):
+                raise NotImplementedError('This is an abstract method.')
+                
+        self.ri = ResourceInstanceMethods(producer)
+    
+    
 class StateMachine(threading.Thread):
     '''This class implements a state machine.
 
@@ -119,15 +165,18 @@ class StateMachine(threading.Thread):
         self._EXIT = Event(self.EXIT_EVENT)
         self._INIT = Event(self.INIT_EVENT)
         self._NULL = Event(self.NULL_EVENT)
+        self.rm = ResourceManager()
+        self.state = init_state
         
+        # Start the FSM   
+        self.start()
+        
+    def _setup_fsm(self):
         # This loop will instantiate all state classes
         for state_cls in self.state_clss:
             self.logger.info(
                     '{} initializing {}'.format(self.name, state_cls.__name__))
-            self._states_obj_map[state_cls] = state_cls(
-                    name=state_cls.__name__, 
-                    sm=self, 
-                    logger=self.logger)
+            self._states_obj_map[state_cls] = state_cls(logger=self.logger)
             
         # This loop will setup super states of all states and build hierarchy
         for state in self._states_obj_map.values():
@@ -142,18 +191,16 @@ class StateMachine(threading.Thread):
         
         # If we were called without initial state argument then implicitly set
         # the first declared state as initialization state. 
-        if init_state is None:
+        if self.state is None:
             self.state = self._states_obj_map[self.state_clss[0]]
         else:
             # Also check if init_state is endeed a State class
             try:
-                self.state = self._states_obj_map[init_state]
+                self.state = self._states_obj_map[self.state]
             except KeyError:
                 raise TypeError(
                         'init_state argument \'{!r}\' is not a valid'
-                        'subclass of State class'.format(init_state))
-        # Start the FSM   
-        self.start()
+                        'subclass of State class'.format(self.state))
         
     def _exec_state(self, state, event):
         try:
@@ -176,11 +223,11 @@ class StateMachine(threading.Thread):
     
     def _release_state_resources(self, state):
         # Release any resource associated with current state
-        for resource in state.resources:
+        for resource in state.resources.values():
             self.logger.debug(
                     '{} deleting resource {}'.format(self.name, resource.name))
             resource.release()
-        state.resources = []
+        state.resources = {}
         
     def _dispatch(self, event):
         current_state = self.state
@@ -205,13 +252,14 @@ class StateMachine(threading.Thread):
             # Exit the path
             for exit_state in path.exit:
                 self._exec_state(exit_state, self._EXIT)
-                self._release_state_resources(exit_state)
+                exit_state.rm.release_all()
             # Enter the path
             for enter_state in path.enter:
                 self._exec_state(enter_state, self._ENTRY)
             current_state = new_state
             new_state, super_state = self._exec_state(current_state, self._INIT)
             self.state = current_state
+        event.ri.release()
         
     def run(self):
         '''Run this state machine as finite state machine with single level 
@@ -220,20 +268,26 @@ class StateMachine(threading.Thread):
         This method is executed automatically by class constructor.
 
         '''
+        # Setup FSM states
+        self._setup_fsm()
         # Initialize the state machine
         self._dispatch(self._INIT)
-        # Overridden run() method of Thread class
+        # Execute event loop
         while True:
             event = self._queue.get()
             # Check should we exit 
             if event is None:
                 self.logger.info('{} terminating'.format(self.name))
                 self._queue.task_done()
+                self.on_terminate()
                 return
             self.logger.debug(
                     '{} {}({})'.format(self.name, self.state.name, event.name))
             self._dispatch(event)
             self._queue.task_done()
+            
+    def on_terminate(self):
+        self.rm.release_all()
             
     def put(self, event, block=True, timeout=None):
         '''Put an event to this state machine
@@ -244,13 +298,14 @@ class StateMachine(threading.Thread):
         '''
         self._queue.put(event, block, timeout)
         
-    def release(self, timeout=None):
+    def terminate(self, timeout=None):
         self._queue.put(None, timeout=timeout)
         
     def wait(self, timeout=None):
         self.join(timeout)
         
-class State(_PathNode):
+        
+class State(_PathNode, ResourceInstance):
     '''This class implements a state.
 
     Each state is represented by a class. Every method of this class processes
@@ -259,11 +314,14 @@ class State(_PathNode):
     '''
     super_state = None
     
-    def __init__(self, name=None, sm=None, logger=None):
-        self.name = name
-        self.sm = sm
+    def __init__(self, logger=None):
+        # Setup resource instance
+        super(State, self).__init__()
+        # Setup resource manager
+        self.rm = ResourceManager()
         self.logger = logger
-        self.resources = []
+        # Convinience variable 
+        self.sm = self.ri.producer
         
     def on_unhandled_event(self, event):
         '''Unhandled event handler
@@ -274,7 +332,7 @@ class State(_PathNode):
         self.logger.info(
                 '{} {}({}) wasn\'t handled'.
                 format(self.sm.name, self.name, event.name))
-    
+        
     
 class DeclareState(object):
     '''This is a decorator class which binds a state with a state machine.
@@ -304,7 +362,7 @@ class DeclareState(object):
         return state_cls
         
         
-class Event(object):
+class Event(ResourceInstance):
     '''Event class
     
     An event is the only means of communication between state machines. Each 
@@ -319,45 +377,58 @@ class Event(object):
         Arguments are:
         *name* is a string representing event name.
         '''
-        self.name = name if name is not None else self.__class__.__name__
-        self.producer = threading.current_thread()
+        super(Event, self).__init__(name)
+        
+        # This helper method only delivers the call to self.on_release method
+        self.ri.release = self.on_relase
+        
+    def on_relase(self):
+        pass
+    
+    @property
+    def producer(self):
+        return self.ri.producer
+    
 
-
-class Resource(object):
-    '''Resource which is associated with current state machine
-    
-    Arguments are:
-    *args* is a string representing resource arguments. This string is used to
-    auto-generate resource name.
-    *is_local* is boolean which defines if this resource is only local to 
-    current state. 
-    '''
-    def __init__(self, args, is_local):
-        self.name = '{}({})'.format(self.__class__.__name__, args)
-        self.sm = threading.current_thread()
-        if is_local:
-            self.sm.state.resources += [self]
-    
-    
-class After(Resource):
+class After(ResourceInstance):
     '''Put an event to current state machine after a specified number of seconds
 
     Example usage:
             fsm.After(10.0, fsm.Event('blink'))
 
     '''
-    def __init__(self, after, event, is_local=False):
-        super(After, self).__init__('{}, {}'.format(after, event.name), is_local)
+    def __init__(self, after, event, name=None, is_local=False):
+        if name is None:
+            name = '{}.{}.{}'.format(self.__class__.__name__, event.name, after)
+        # Setup resource instance
+        super(After, self).__init__(name=name)
+        def timer_release(self): self._timer.cancel()
+        self.ri.release = timer_release
+        # Add your self to state or state machine resource manager
+        if is_local:
+            self.ri.producer.state.rm.add(self)
+        else:
+            self.ri.producer.rm.add(self)
+        # Save arguments
         self.timeo = after
         self.event = event
-        self.timer = threading.Timer(after, self.function, [self.event])
-        self.timer.start()
+        self.start()
+    
+    def start(self):
+        self._timer = threading.Timer(self.timeo, self.callback, [self.event])
+        self._timer.start()        
         
-    def function(self, *args, **kwargs):
-        self.sm.put(*args)
+    def callback(self, *args, **kwargs):
+        '''Callback method which is called after/every timeout
         
-    def release(self):
-        self.timer.cancel()
+        *args* contains event object
+        '''
+        self.ri.producer.put(*args)
+
+    def cancel(self):
+        '''Cancel a running timer
+        '''
+        self.ri.release()
         
         
 class Every(After):
@@ -368,11 +439,13 @@ class Every(After):
             fsm.Every(10.0, fsm.Event('blink'))
 
     '''
-    def __init__(self, every, event, is_local=False):
-        super().__init__(every, event, is_local)
+    def __init__(self, every, event, name=None, is_local=False):
+        super().__init__(every, event, name=name, is_local=is_local)
         
-    def function(self, *args, **kwargs):
-        super().function(*args, **kwargs)
-        self.timer = threading.Timer(self.timeo, self.function, [self.event])
-        self.timer.start()
+    def callback(self, *args, **kwargs):
+        super().callback(*args, **kwargs)
+        self.start()
         
+
+def current_sm():
+    return threading.current_thread()

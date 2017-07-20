@@ -46,7 +46,7 @@ class StateS(fsm.State):
     
     def on_terminate(self, event):
         print('S:terminate')
-        self.sm.release()
+        self.sm.terminate()
         sys.exit(0)
         
     def on_e(self, event):
