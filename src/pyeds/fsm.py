@@ -14,72 +14,59 @@ import threading
 class _PathManager(object):
     def __init__(self):
         self.depth = 1
-        self._nodes_path_map = {}
-        self._extended_exit = []
+        self._states_path_map = {}
+        self._exit = []
+        self._enter = []
         
-    def _build_node_depth(self, node):
+    def _build_state_depth(self, state):
         state_depth = []
         
-        while node is not None:
-            state_depth += [node]
-            node = node.path_parent
+        while state is not None:
+            state_depth += [state]
+            state = state.path_parent
             
         return state_depth
 
-    def add(self, node, parent):
-        node.path_parent = parent
-        self._nodes_path_map[node] = []
+    def add(self, state, super_state):
+        state.path_parent = super_state
+        self._states_path_map[state] = []
         
     def build(self):
-        for node in self._nodes_path_map.keys():
-            path = self._build_node_depth(node)
+        for state in self._states_path_map.keys():
+            path = self._build_state_depth(state)
             self.depth = max(self.depth, len(path))
-            self._nodes_path_map[node] = path
+            self._states_path_map[state] = path
             
     def generate(self, source, destination):
-        path = _Path(self._extended_exit)
-        self._extended_exit = []
-        print('generate {} -> {}'.format(source.name, destination.name))
         # NOTE: Transition type A, most common transition
         if source == destination:
-            path.enter += [destination]
-            path.exit += [source]
+            self._enter += [destination]
+            self._exit += [source]
         else:
-            source_path = self._nodes_path_map[source]
-            print('source path: {}'.format(source_path))
-            destination_path = self._nodes_path_map[destination]
-            print('dest path: {}'.format(destination_path))
-            for source_node in source_path:
-                path.enter = []
-                for destination_node in destination_path:
-                    if source_node == destination_node:
-                        break
-                    path.enter += [destination_node]
-                path.exit += [source_node]
-        return path.commit()
+            source_path = self._states_path_map[source]
+            destination_path = self._states_path_map[destination]
+            intersection = set(source_path) & set(destination_path)
+            self._exit += [s for s in source_path if s not in intersection]
+            self._enter += [s for s in destination_path if s not in intersection]
     
-    def prepend_exit(self, node):
-        self._extended_exit += [node]
+    def pend_exit(self, node):
+        self._exit += [node]
         
-    def reset_prependers(self):
-        self._extended_exit = []
+    def reset(self):
+        self._exit = []
+        self._enter = []
+        
+    def exit(self):
+        return iter(self._exit)
+    
+    def enter(self):
+        return reversed(self._enter)
 
 
 class _PathNode(object):
     path_parent = None
     
-    
-class _Path(object):
-    def __init__(self, extend_exit):
-        self.exit = extend_exit[:]
-        self.enter = []
-        
-    def commit(self):
-        self.enter.reverse()
-        print('exit: {}'.format(self.exit))
-        print('enter: {}'.format(self.enter))
-        return self
-    
+       
 class ResourceManager(object):
     def __init__(self):
         self._resources = {}
@@ -201,7 +188,7 @@ class StateMachine(threading.Thread):
                 raise TypeError(
                         'init_state argument \'{!r}\' is not a valid'
                         'subclass of State class'.format(self.state))
-        
+    
     def _exec_state(self, state, event):
         try:
             super_state = None
@@ -231,13 +218,13 @@ class StateMachine(threading.Thread):
         
     def _dispatch(self, event):
         current_state = self.state
-        self._pathman.reset_prependers()
+        self._pathman.reset()
         # Loop until we find a state that will handle the event
         while True:
             new_state, super_state = self._exec_state(current_state, event)
             
             if super_state is not None:
-                self._pathman.prepend_exit(current_state)
+                self._pathman.pend_exit(current_state)
                 current_state = super_state
             else:
                 break
@@ -248,14 +235,15 @@ class StateMachine(threading.Thread):
                             self.name, 
                             current_state.name, 
                             new_state.name))
-            path = self._pathman.generate(current_state, new_state)
+            self._pathman.generate(current_state, new_state)
             # Exit the path
-            for exit_state in path.exit:
+            for exit_state in self._pathman.exit():
                 self._exec_state(exit_state, self._EXIT)
                 exit_state.rm.release_all()
             # Enter the path
-            for enter_state in path.enter:
+            for enter_state in self._pathman.enter():
                 self._exec_state(enter_state, self._ENTRY)
+            self._pathman.reset()
             current_state = new_state
             new_state, super_state = self._exec_state(current_state, self._INIT)
             self.state = current_state
@@ -322,6 +310,18 @@ class State(_PathNode, ResourceInstance):
         self.logger = logger
         # Convinience variable 
         self.sm = self.ri.producer
+        
+    def entry(self):
+        pass
+    
+    def exit(self):
+        pass
+    
+    def init(self):
+        pass
+    
+    def null(self):
+        pass
         
     def on_unhandled_event(self, event):
         '''Unhandled event handler
