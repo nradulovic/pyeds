@@ -10,19 +10,12 @@ import queue
 import logging
 import threading
 
-EVENT_HANDLER_PREFIX = 'on_'
-SIGNAL_HANDLER_PREFIX = 'sig_'
 
+EVENT_HANDLER_PREFIX = 'on_'
 ENTRY_SIGNAL = 'entry'
 EXIT_SIGNAL = 'exit'
 INIT_SIGNAL = 'init'
-NULL_EVENT = 'null'
 
-class StateError(Exception):
-    pass
-
-class StateMachineError(Exception):
-    pass
 
 class _PathManager(object):
     def __init__(self):
@@ -79,7 +72,15 @@ class _PathManager(object):
 class _PathNode(object):
     path_parent = None
     
-       
+
+class StateError(Exception):
+    pass
+
+
+class StateMachineError(Exception):
+    pass
+
+      
 class ResourceManager(object):
     def __init__(self):
         self._resources = {}
@@ -110,6 +111,11 @@ class ResourceInstance(object):
     Arguments are:
     *name* is the name of the resource 
     '''
+    name = ''
+    '''This is a string containing State name'''
+    producer = None
+    '''Specifies which state machine has this state'''
+    
     def __init__(self, name=None):
         self.name = name if name is not None else self.__class__.__name__
         self.producer = current_sm()
@@ -162,6 +168,9 @@ class StateMachine(threading.Thread):
         self.start()
         
     def _setup_fsm(self):
+        class Signal(Event):
+            def execute(self, handler):
+                    return handler()
         self._ENTRY = Signal(ENTRY_SIGNAL)
         self._EXIT = Signal(EXIT_SIGNAL)
         self._INIT = Signal(INIT_SIGNAL)
@@ -170,7 +179,7 @@ class StateMachine(threading.Thread):
         for state_cls in self.state_clss:
             self.logger.info(
                     '{} initializing {}'.format(self.name, state_cls.__name__))
-            self._states_obj_map[state_cls] = state_cls(logger=self.logger)
+            self._states_obj_map[state_cls] = state_cls()
             
         # This loop will setup super states of all states and build hierarchy
         for state in self._states_obj_map.values():
@@ -287,9 +296,6 @@ class StateMachine(threading.Thread):
             self._dispatch(event)
             self._queue.task_done()
             
-    def on_terminate(self):
-        self.rm.release_all()
-            
     def put(self, event, block=True, timeout=None):
         '''Put an event to this state machine
 
@@ -307,7 +313,10 @@ class StateMachine(threading.Thread):
         
     def instance_of(self, state_cls):
         return self._states_obj_map[state_cls]
-    
+                
+    def on_terminate(self):
+        self.rm.release_all()
+        
     def on_exception(self, e, state, event):
         raise StateError(
                 e, 
@@ -326,16 +335,20 @@ class State(_PathNode, ResourceInstance):
     '''
     super_state = None
     
-    def __init__(self, logger=None):
+    def __init__(self):
         # Setup resource instance
         super(State, self).__init__()
+        # Add self to SM (producer) ResourceManager
+        self.producer.rm.put(self)
         # Setup resource manager
         self.rm = ResourceManager()
-        self.logger = logger
     
     @property
     def sm(self):
         return self.producer
+    
+    def logger(self):
+        return self.producer.logger
         
     def on_entry(self):
         pass
@@ -346,9 +359,6 @@ class State(_PathNode, ResourceInstance):
     def on_init(self):
         pass
     
-    def on_null(self, event):
-        pass
-        
     def on_unhandled_event(self, event):
         '''Unhandled event handler
         
@@ -413,11 +423,6 @@ class Event(ResourceInstance):
         pass
     
     
-class Signal(Event):
-    def execute(self, handler):
-        return handler()
-        
-
 class After(ResourceInstance):
     '''Put an event to current state machine after a specified number of seconds
 
