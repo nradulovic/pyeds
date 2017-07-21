@@ -21,26 +21,26 @@ class HypotheticalMachine(fsm.StateMachine):
 
 @fsm.DeclareState(HypotheticalMachine)
 class StateInitial(fsm.State):
-    def on_entry(self, event):
+    def on_entry(self):
         pass
         
-    def on_exit(self, event):
+    def on_exit(self):
         pass
         
-    def on_init(self, event):
+    def on_init(self):
         self.sm.foo = 0
         return StateS2
     
 
 @fsm.DeclareState(HypotheticalMachine)
 class StateS(fsm.State):
-    def on_entry(self, event):    
+    def on_entry(self):    
         print('S:entry')
         
-    def on_exit(self, event):
+    def on_exit(self):
         print('S:exit')
     
-    def on_init(self, event):
+    def on_init(self):
         print('S:init')
         return StateS11
     
@@ -63,13 +63,13 @@ class StateS(fsm.State):
 class StateS1(fsm.State):
     super_state = StateS
     
-    def on_entry(self, event):
+    def on_entry(self):
         print('S1:entry')
         
-    def on_exit(self, event):
+    def on_exit(self):
         print('S1:exit')
         
-    def on_init(self, event):
+    def on_init(self):
         print('S1:init')
         return StateS11
     
@@ -102,13 +102,13 @@ class StateS1(fsm.State):
 class StateS11(fsm.State):
     super_state = StateS1
         
-    def on_entry(self, event):
+    def on_entry(self):
         print('S11:entry')
 
-    def on_exit(self, event):
+    def on_exit(self):
         print('S11:exit')
         
-    def on_init(self, event):
+    def on_init(self):
         print('S11:init')
         
     def on_d(self, event):
@@ -129,13 +129,13 @@ class StateS11(fsm.State):
 class StateS2(fsm.State):
     super_state = StateS
     
-    def on_entry(self, event):
+    def on_entry(self):
         print('S2:entry')
 
-    def on_exit(self, event):
+    def on_exit(self):
         print('S2:exit')
         
-    def on_init(self, event):
+    def on_init(self):
         print('S2:init')
         return StateS211
     
@@ -152,13 +152,13 @@ class StateS2(fsm.State):
 class StateS21(fsm.State):
     super_state = StateS2
     
-    def on_entry(self, event):
+    def on_entry(self):
         print('S21:entry')
         
-    def on_exit(self, event):
+    def on_exit(self):
         print('S21:exit')
         
-    def on_init(self, event):
+    def on_init(self):
         print('S21:init')
         return StateS211
     
@@ -178,13 +178,13 @@ class StateS21(fsm.State):
 class StateS211(fsm.State):
     super_state = StateS21
 
-    def on_entry(self, event):
+    def on_entry(self):
         print('S211:entry')
         
-    def on_exit(self, event):
+    def on_exit(self):
         print('S211:exit')
         
-    def on_init(self, event):
+    def on_init(self):
         print('S211:init')
 
     def on_d(self, event):
