@@ -3,9 +3,17 @@
 News
 ====
 
+0.7
+---
+ 
+ * Added support for Signals
+
 0.6
 ---
  
+ *Release date 21-July-2016*
+ 
+ * Hierarchical works as intended
 
 0.5
 ---

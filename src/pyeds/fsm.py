@@ -10,6 +10,19 @@ import queue
 import logging
 import threading
 
+EVENT_HANDLER_PREFIX = 'on_'
+SIGNAL_HANDLER_PREFIX = 'sig_'
+
+ENTRY_SIGNAL = 'entry'
+EXIT_SIGNAL = 'exit'
+INIT_SIGNAL = 'init'
+NULL_EVENT = 'null'
+
+class StateError(Exception):
+    pass
+
+class StateMachineError(Exception):
+    pass
 
 class _PathManager(object):
     def __init__(self):
@@ -71,17 +84,19 @@ class ResourceManager(object):
     def __init__(self):
         self._resources = {}
         
-    def add(self, resource_instance):
+    def put(self, resource_instance):
         self._resources[resource_instance.name] = resource_instance
         
     def get(self, resource_name):
         return self._resources[resource_name]
         
-    def remove(self, resource_instance):
-        for resource_key, resource in self._resources.items():
-            if resource == resource_instance:
-                resource.release()
-                self._resources.pop(resource_key)
+    def remove(self, resource_name):
+        del self._resources[resource_name]
+        
+    def pop(self, resource_name):
+        resource = self.get(resource_name)
+        self.remove(resource_name)
+        return resource
 
     def release_all(self):
         for resource in self._resources.values():
@@ -97,16 +112,12 @@ class ResourceInstance(object):
     '''
     def __init__(self, name=None):
         self.name = name if name is not None else self.__class__.__name__
-        producer = current_sm()
-            
-        class ResourceInstanceMethods(object):
-            def __init__(self, producer):
-                self.producer = producer
-                
-            def release(self):
-                raise NotImplementedError('This is an abstract method.')
-                
-        self.ri = ResourceInstanceMethods(producer)
+        self.producer = current_sm()
+
+    def release(self):
+        raise NotImplementedError(
+                'In class {} is not implemented abstract method.'.format(
+                        self.__class__.__name__))    
     
     
 class StateMachine(threading.Thread):
@@ -122,10 +133,6 @@ class StateMachine(threading.Thread):
 
     '''
     logger = logging.getLogger(None)
-    ENTRY_EVENT = 'entry'
-    EXIT_EVENT = 'exit'
-    INIT_EVENT = 'init'
-    NULL_EVENT = 'null'
     
     def __init__(self, init_state=None, queue_size=64):
         '''This constructor should always be called with keyword arguments. 
@@ -148,10 +155,6 @@ class StateMachine(threading.Thread):
         self._queue = queue.Queue(queue_size)
         self._pathman = _PathManager()
         self._states_obj_map = {}
-        self._ENTRY = Event(self.ENTRY_EVENT)
-        self._EXIT = Event(self.EXIT_EVENT)
-        self._INIT = Event(self.INIT_EVENT)
-        self._NULL = Event(self.NULL_EVENT)
         self.rm = ResourceManager()
         self.state = init_state
         
@@ -159,6 +162,10 @@ class StateMachine(threading.Thread):
         self.start()
         
     def _setup_fsm(self):
+        self._ENTRY = Signal(ENTRY_SIGNAL)
+        self._EXIT = Signal(EXIT_SIGNAL)
+        self._INIT = Signal(INIT_SIGNAL)
+        
         # This loop will instantiate all state classes
         for state_cls in self.state_clss:
             self.logger.info(
@@ -185,26 +192,33 @@ class StateMachine(threading.Thread):
             try:
                 self.state = self._states_obj_map[self.state]
             except KeyError:
-                raise TypeError(
+                raise StateMachineError(
                         'init_state argument \'{!r}\' is not a valid'
                         'subclass of State class'.format(self.state))
+        # Add a special case when a state may return None    
+        self._states_obj_map[None] = None
     
     def _exec_state(self, state, event):
         try:
             super_state = None
-            event_handler = getattr(state, 'on_{}'.format(event.name))
+            handler = getattr(
+                    state, 
+                    '{}{}'.format(EVENT_HANDLER_PREFIX, event.name))
         except AttributeError:
             super_state = state.path_parent
-            event_handler = state.on_unhandled_event
+            handler = state.on_unhandled_event
         finally:
-            new_state_cls = event_handler(event)
-            # We are deliberately using if condition instead of try/except or
-            # dictionary get method because we want this code to fail when a
-            # user has given us wrong return value.
-            if new_state_cls is not None:
-                new_state = self._states_obj_map[new_state_cls]
-            else:
-                new_state = None
+            try:
+                new_state_cls = event.execute(handler)
+            except Exception as e:
+                self.on_exception(e, state, event)
+                new_state_cls = None
+        try:
+            new_state = self._states_obj_map[new_state_cls]
+        except KeyError:
+            raise StateMachineError(
+                    'Returned state \'{!r}\' is not a valid'
+                    'subclass of State class'.format(new_state_cls))
                 
         return (new_state, super_state)
     
@@ -247,7 +261,6 @@ class StateMachine(threading.Thread):
             current_state = new_state
             new_state, super_state = self._exec_state(current_state, self._INIT)
             self.state = current_state
-        event.ri.release()
         
     def run(self):
         '''Run this state machine as finite state machine with single level 
@@ -265,9 +278,9 @@ class StateMachine(threading.Thread):
             event = self._queue.get()
             # Check should we exit 
             if event is None:
-                self.logger.info('{} terminating'.format(self.name))
                 self._queue.task_done()
                 self.on_terminate()
+                self.logger.info('{} terminated'.format(self.name))
                 return
             self.logger.debug(
                     '{} {}({})'.format(self.name, self.state.name, event.name))
@@ -292,6 +305,17 @@ class StateMachine(threading.Thread):
     def wait(self, timeout=None):
         self.join(timeout)
         
+    def instance_of(self, state_cls):
+        return self._states_obj_map[state_cls]
+    
+    def on_exception(self, e, state, event):
+        raise StateError(
+                e, 
+                self.__class__.__module__, 
+                self.name, 
+                state.name, 
+                event.name)
+        
         
 class State(_PathNode, ResourceInstance):
     '''This class implements a state.
@@ -308,19 +332,21 @@ class State(_PathNode, ResourceInstance):
         # Setup resource manager
         self.rm = ResourceManager()
         self.logger = logger
-        # Convinience variable 
-        self.sm = self.ri.producer
+    
+    @property
+    def sm(self):
+        return self.producer
         
-    def entry(self):
+    def on_entry(self):
         pass
     
-    def exit(self):
+    def on_exit(self):
         pass
     
-    def init(self):
+    def on_init(self):
         pass
     
-    def null(self):
+    def on_null(self, event):
         pass
         
     def on_unhandled_event(self, event):
@@ -370,6 +396,7 @@ class Event(ResourceInstance):
     current state class which has the same name.
     
     '''  
+    
     def __init__(self, name=None):
         '''Using this constructor ensures that each event will be tagged with
         additional information.
@@ -377,18 +404,19 @@ class Event(ResourceInstance):
         Arguments are:
         *name* is a string representing event name.
         '''
-        super(Event, self).__init__(name)
-        
-        # This helper method only delivers the call to self.on_release method
-        self.ri.release = self.on_relase
-        
-    def on_relase(self):
+        super().__init__(name)
+    
+    def execute(self, handler):
+        return handler(self)
+    
+    def release(self):
         pass
     
-    @property
-    def producer(self):
-        return self.ri.producer
     
+class Signal(Event):
+    def execute(self, handler):
+        return handler()
+        
 
 class After(ResourceInstance):
     '''Put an event to current state machine after a specified number of seconds
@@ -402,13 +430,11 @@ class After(ResourceInstance):
             name = '{}.{}.{}'.format(self.__class__.__name__, event.name, after)
         # Setup resource instance
         super(After, self).__init__(name=name)
-        def timer_release(self): self._timer.cancel()
-        self.ri.release = timer_release
         # Add your self to state or state machine resource manager
         if is_local:
-            self.ri.producer.state.rm.add(self)
+            self.producer.state.rm.put(self)
         else:
-            self.ri.producer.rm.add(self)
+            self.producer.rm.put(self)
         # Save arguments
         self.timeo = after
         self.event = event
@@ -423,12 +449,15 @@ class After(ResourceInstance):
         
         *args* contains event object
         '''
-        self.ri.producer.put(*args)
+        self.producer.put(*args)
 
+    def release(self):
+        self._timer.cancel()
+        
     def cancel(self):
         '''Cancel a running timer
         '''
-        self.ri.release()
+        self.release()
         
         
 class Every(After):
@@ -449,3 +478,5 @@ class Every(After):
 
 def current_sm():
     return threading.current_thread()
+
+
