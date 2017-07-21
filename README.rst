@@ -16,16 +16,15 @@ PyEDS can be installed using the standard Python tool ``pip`` with
 .. code-block:: bash
 
     pip install pyeds
-    
 
 How to use it
 -------------
 
 The basic routine to create a state machine is the following:
 
-1. Declare a FSM class 
-2. Declare all state classes
-3. Instantiate FSM class
+    1. Declare a FSM class 
+    2. Declare all state classes
+    3. Instantiate FSM class
  
 Declaring a FSM class
 ^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +40,6 @@ declare a empty class which inherits the ``StateMacine``:
     
     class MyFsm(fsm.StateMachine):
         pass
-        
    
 Declaring a state class
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -163,7 +161,20 @@ To generate a new event just instantiate Event class:
 .. code-block:: python
 
     new_event = fsm.Event('event_name')
-    
+
+Event class attributes and methods
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Attributes:
+ - self.name - this is a string containing Event name
+ - self.producer - specifies which state machine has generated this event.
+ 
+Methods:
+ - release(self) - this method is called by state machine when it has finished
+                   the processing of the event
+ - execute(self, handler) - this method is called by state machine and it is 
+                            used to modify how an event handler is called.
+
 Rules about event naming
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -187,13 +198,42 @@ not allow punctuation characters such as @, $, and % within identifiers.
 
     ok_event = fsm.Event('some_event_with_long_name')
     bad_event = fsm.Event('you cannot use spaces, @, $ and % here')
-    
+
 Transition
 ----------
 
 Switching from one state to another is called state transition. A transition is 
 a set of actions to be executed when a condition is fulfilled or when an event 
 is received.
+
+Transitions are started by returning target state class in an event handler.
+
+.. code-block:: python
+ 
+    def on_some_event(self, event):
+        do_some_stuff()
+        return SomeOtherState # Note: return a class object, not instance object
+
+State
+-----
+
+To declare a state it must inherit state class `State`. To bind the state to a
+specific state machine the `DeclareState` decorator is used with state machine
+class as parameter.
+
+.. code-block:: python
+
+    # This is an empty state called 'MyState' and it is bounded to 
+    # 'MyStateMachine' state machine
+    @fsm.DeclareState(MyStateMachine)
+    class MyState(fsm.State):
+        pass
+
+Hierarchical Finite State Machines (HFSM)
+-----------------------------------------
+
+Please, refer to Wikipedia article for further explanation: 
+:: Wikipedia: https://en.wikipedia.org/wiki/UML_state_machine#Hierarchically_nested_states 
 
 Source
 ------
