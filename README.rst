@@ -166,11 +166,11 @@ Event class attributes and methods
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Attributes:
- - ``self.name`` - this is a string containing Event name
+ - ``self.name`` - this is a string containing event name
  - ``self.producer`` - specifies which state machine has generated this event.
  
 Methods:
- - ``release(self)`` : This method is called by state machine when it has 
+ - ``release(self)`` - this method is called by state machine when it has 
    finished the processing of the event
  - ``execute(self, handler)`` - this method is called by state machine and it 
    is used to modify how an event handler is called.
@@ -206,7 +206,7 @@ State attributes and methods
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Attributes:
- - ``self.name`` - this is a string containing State name
+ - ``self.name`` - this is a string containing state name
  - ``self.producer`` - specifies which state machine has this state
  - ``self.sm`` - the same as ``self.producer`` but shorter
  - ``self.logger`` - this is the logger which is used by state machine
@@ -215,8 +215,8 @@ Attributes:
    state class
  
 Methods:
- - ``release(self)`` : This method is called by state machine when it has 
-   terminated
+ - ``release(self)`` - this method is called by state machine just before
+   state machine termination
  - ``on_entry(self)`` - this method is called by state machine when it has
    entered the state
  - ``on_exit(self)`` - this method is called by state machine when it has
@@ -226,6 +226,30 @@ Methods:
  - ``on_unhandled_event`` - this method is called by state machine when
    no event handlers where found for this state
    
+State machine
+-------------
+
+State machine attributes and methods
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Attributes:
+ - ``self.name`` - this is a string containing Sstate machine name
+ - ``self.logger`` - this is the logger which is used by state machine
+ - ``self.rm`` - this is ResourceManager for this state machine
+ - ``self.state`` - current state of this machine
+ 
+Methods:
+ - ``run(self)`` - this is state machine dispatch method
+ - ``put(self, event)`` - this method puts an event to state machine wait
+   queue
+ - ``terminate(self)`` - pend termination of the state machine. After 
+   exiting this method the state machine may still run. Use ``self.wait``
+   to wait for FSM termination
+ - ``wait(self)`` - wait for FSM to terminate
+ - ``instance_of`` - get the instance of a state class
+ - ``on_terminate`` - gets called by state machine just before termination
+ - ``on_exception`` - gets called when unhandled exception has occured
+ 
 Transition
 ----------
 
