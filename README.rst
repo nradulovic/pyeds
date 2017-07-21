@@ -21,10 +21,9 @@ How to use it
 -------------
 
 The basic routine to create a state machine is the following:
-
-1) Declare a FSM class 
-2) Declare all state classes
-3) Instantiate FSM class
+ 1) Declare a FSM class 
+ 2) Declare all state classes
+ 3) Instantiate FSM class
  
 Declaring a FSM class
 ^^^^^^^^^^^^^^^^^^^^^
@@ -74,10 +73,11 @@ Blinky example
 
 The following is an example of FSM which is called Blinky. The FSM will print 
 'on' text and 'off' text on console with 0.5 seconds of delay between the 
-messages. The FSM has 2 states:
+messages. 
 
-1) State On
-2) State Off
+The FSM has 2 states:
+ 1) State On
+ 2) State Off
  
 ::
 
@@ -147,11 +147,11 @@ machines
 An event can have associated parameters, allowing the event to convey not only 
 the occurrence but also quantitative information about the occurrence. 
 
-An event in PyEDS is instanced using class Event. The associated parameters with
-an event are:
+An event in PyEDS is instanced using class Event. 
 
-1) name of the event
-2) producer of event
+The associated parameters with an event are:
+ 1) name of the event
+ 2) producer of event
  
 Generate an event
 ^^^^^^^^^^^^^^^^^
@@ -170,10 +170,10 @@ Attributes:
  - self.producer - specifies which state machine has generated this event.
  
 Methods:
- - release(self) - this method is called by state machine when it has finished
-                   the processing of the event
+ - release(self) : This method is called by state machine when it has finished
+   the processing of the event
  - execute(self, handler) - this method is called by state machine and it is 
-                            used to modify how an event handler is called.
+   used to modify how an event handler is called.
 
 Rules about event naming
 ^^^^^^^^^^^^^^^^^^^^^^^^
