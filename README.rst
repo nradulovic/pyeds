@@ -31,7 +31,7 @@ Declaring a FSM class
 FSM class is the entry point of a FSM which is used to receive events (see 
 below) and do the transitions between states. Each FSM must declare it's own 
 class which is a subclass of ``StateMachine``. The simplest way is to just
-declare a empty class which inherits the ``StateMacine``:
+declare an empty class which inherits the class ``StateMachine``:
 
 .. code-block:: python
 
@@ -45,9 +45,9 @@ Declaring a state class
 
 Each state is represented by different class. Every method in that class may 
 handle one particular event. To declare the state, a class must be decorated 
-with ``DeclareState`` decorator which state machine as an argument. This 
-decorator binds the state class to a specific FSM class. Also, the new class
-must be a subclass of ``State`` class:
+with ``DeclareState`` decorator which require state machine as an argument. 
+This decorator binds the state class to the specific FSM class. Also, the new 
+state class must be a subclass of ``State`` class:
 
 .. code-block:: python
 
@@ -147,7 +147,7 @@ machines
 An event can have associated parameters, allowing the event to convey not only 
 the occurrence but also quantitative information about the occurrence. 
 
-An event in PyEDS is instanced using class Event. 
+An event in PyEDS is instanced using class ``Event``. 
 
 The associated parameters with an event are:
  - name of the event
@@ -156,7 +156,7 @@ The associated parameters with an event are:
 Generate an event
 ^^^^^^^^^^^^^^^^^
 
-To generate a new event just instantiate Event class:
+To generate a new event just instantiate ``Event`` class:
 
 .. code-block:: python
 
@@ -166,14 +166,14 @@ Event class attributes and methods
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Attributes:
- - self.name - this is a string containing Event name
- - self.producer - specifies which state machine has generated this event.
+ - ``self.name`` - this is a string containing Event name
+ - ``self.producer`` - specifies which state machine has generated this event.
  
 Methods:
- - release(self) : This method is called by state machine when it has finished
-   the processing of the event
- - execute(self, handler) - this method is called by state machine and it is 
-   used to modify how an event handler is called.
+ - ``release(self)`` : This method is called by state machine when it has 
+   finished the processing of the event
+ - ``execute(self, handler)`` - this method is called by state machine and it 
+   is used to modify how an event handler is called.
 
 Rules about event naming
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -199,6 +199,33 @@ not allow punctuation characters such as @, $, and % within identifiers.
     ok_event = fsm.Event('some_event_with_long_name')
     bad_event = fsm.Event('you cannot use spaces, @, $ and % here')
 
+State
+-----
+
+State attributes and methods
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Attributes:
+ - ``self.name`` - this is a string containing State name
+ - ``self.producer`` - specifies which state machine has this state
+ - ``self.sm`` - the same as ``self.producer`` but shorter
+ - ``self.logger`` - this is the logger which is used by state machine
+ - ``self.rm`` - this is ResourceManager for this state
+ - ``super_state`` - this is a class attribute that specifies super 
+   state class
+ 
+Methods:
+ - ``release(self)`` : This method is called by state machine when it has 
+   terminated
+ - ``on_entry(self)`` - this method is called by state machine when it has
+   entered the state
+ - ``on_exit(self)`` - this method is called by state machine when it has
+   exited the state
+ - ``on_init(self)`` - this method is called by state machine when it has
+   entered the state and now needs to initialize the state
+ - ``on_unhandled_event`` - this method is called by state machine when
+   no event handlers where found for this state
+   
 Transition
 ----------
 
@@ -214,30 +241,14 @@ Transitions are started by returning target state class in an event handler.
         do_some_stuff()
         return SomeOtherState # Note: return a class object, not instance object
 
-State
------
-
-To declare a state it must inherit state class `State`. To bind the state to a
-specific state machine the `DeclareState` decorator is used with state machine
-class as parameter.
-
-.. code-block:: python
-
-    # This is an empty state called 'MyState' and it is bounded to 
-    # 'MyStateMachine' state machine
-    @fsm.DeclareState(MyStateMachine)
-    class MyState(fsm.State):
-        pass
-
 Hierarchical Finite State Machines (HFSM)
 -----------------------------------------
 
 Please, refer to Wikipedia article for further explanation: 
-:: Wikipedia: https://en.wikipedia.org/wiki/UML_state_machine#Hierarchically_nested_states 
+ - https://en.wikipedia.org/wiki/UML_state_machine#Hierarchically_nested_states 
 
 Source
 ------
 
 Source is available at github:
-
-:: _GitHub: https://github.com/nradulovic/pyeds
+ - https://github.com/nradulovic/pyeds
