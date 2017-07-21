@@ -22,9 +22,9 @@ How to use it
 
 The basic routine to create a state machine is the following:
 
-    1. Declare a FSM class 
-    2. Declare all state classes
-    3. Instantiate FSM class
+ 1) Declare a FSM class 
+ 2) Declare all state classes
+ 3) Instantiate FSM class
  
 Declaring a FSM class
 ^^^^^^^^^^^^^^^^^^^^^
@@ -150,8 +150,8 @@ the occurrence but also quantitative information about the occurrence.
 An event in PyEDS is instanced using class Event. The associated parameters with
 an event are:
 
-    1. name of the event
-    2. producer of event
+ 1) name of the event
+ 2) producer of event
  
 Generate an event
 ^^^^^^^^^^^^^^^^^
