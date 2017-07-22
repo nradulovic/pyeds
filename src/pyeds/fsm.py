@@ -20,40 +20,43 @@ INIT_SIGNAL = 'init'
 class _PathManager(object):
     def __init__(self):
         self.depth = 1
-        self._state_hieararchy_map = {}
-        self._state_path_map = {}
-        self._state_translation_map = {}
+        self.no_states = 0
+        self._node_hierarchy_map = {}
+        self._node_path_map = {}
+        self._node_translation_map = {}
         self._exit = []
         self._enter = []
         
-    def _build_state_cls_depth(self, state_cls):
-        state_cls_depth = ()
-        parent = self._state_hieararchy_map[state_cls]
+    def _build_node_cls_depth(self, node_cls):
+        node_cls_depth = ()
+        parent = self._node_hierarchy_map[node_cls]
         
         while parent is not None:
-            state_cls_depth += (parent,)
-            parent = self._state_hieararchy_map[parent]
+            node_cls_depth += (parent,)
+            parent = self._node_hierarchy_map[parent]
             
-        return state_cls_depth
+        return node_cls_depth
 
-    def add(self, state_cls, parent_state_cls):
-        self._state_hieararchy_map[state_cls] = parent_state_cls
+    def add_cls(self, node_cls, parent_node_cls):
+        self._node_hierarchy_map[node_cls] = parent_node_cls
+        self.no_states += 1
         
     def build(self):
         # Build translation map
-        for state_cls in self._state_hieararchy_map.keys():
-            self._state_translation_map[state_cls] = state_cls()
+        for node_cls in self._node_hierarchy_map.keys():
+            self._node_translation_map[node_cls] = node_cls()
         # Build path map
-        for state_cls in self._state_hieararchy_map.keys():
-            state_cls_depth = self._build_state_cls_depth(state_cls)
-            self.depth = max(self.depth, len(state_cls_depth))
-            self._state_path_map[self.instance_of(state_cls)] = \
-                    ([self.instance_of(item) for item in state_cls_depth])
-        del self._state_hieararchy_map
+        for node_cls in self._node_hierarchy_map.keys():
+            node_cls_depth = self._build_node_cls_depth(node_cls)
+            self.depth = max(self.depth, len(node_cls_depth))
+            self._node_path_map[self.instance_of(node_cls)] = \
+                    ([self.instance_of(i) for i in node_cls_depth])
+        # We don't need hierarchy map anymore
+        del self._node_hierarchy_map
         # Ensure that there is at least one element in the dict so we don't get
         # KeyError elsewhere in the code
-        self._state_translation_map[None] = None
-        self._state_path_map[None] = None
+        self._node_translation_map[None] = None
+        self._node_path_map[None] = None
             
     def generate(self, source, destination):
         # NOTE: Transition type A, most common transition
@@ -61,17 +64,17 @@ class _PathManager(object):
             self._enter += [destination]
             self._exit += [source]
         else:
-            source_path = self._state_path_map[source]
-            destination_path = self._state_path_map[destination]
+            source_path = self._node_path_map[source]
+            destination_path = self._node_path_map[destination]
             intersection = set(source_path) & set(destination_path)
             self._exit += [s for s in source_path if s not in intersection]
             self._enter += [s for s in destination_path if s not in intersection]
     
-    def parent_of(self, state):
-        return self._state_path_map[state][0]
+    def parent_of(self, node):
+        return self._node_path_map[node][0]
         
-    def instance_of(self, state_cls):
-        return self._state_translation_map[state_cls]
+    def instance_of(self, node_cls):
+        return self._node_translation_map[node_cls]
         
     def pend_exit(self, node):
         self._exit += [node]
@@ -136,8 +139,8 @@ class ResourceInstance(object):
 
     def release(self):
         raise NotImplementedError(
-                'In class {} is not implemented abstract method.'.format(
-                        self.__class__.__name__))    
+                'Abstract method \'release\' in class \'{}\'.'
+                .format(self.__class__.__name__))    
     
     
 class StateMachine(threading.Thread):
@@ -192,13 +195,14 @@ class StateMachine(threading.Thread):
         for state_cls in self.state_clss:
             self.logger.info(
                     '{} initializing {}'.format(self.name, state_cls.__name__))
-            self._pathman.add(state_cls, state_cls.super_state)
+            self._pathman.add_cls(state_cls, state_cls.super_state)
             
         self._pathman.build()
         self.logger.info(
-            '{} hierarchy is {} level(s) deep'.format(
+            '{} hierarchy is {} level(s) deep, {} state(s)'.format(
                     self.name, 
-                    self._pathman.depth))
+                    self._pathman.depth,
+                    self._pathman.no_states))
         
         # If we were called without initial state argument then implicitly set
         # the first declared state as initialization state. 
@@ -269,6 +273,7 @@ class StateMachine(threading.Thread):
             current_state = new_state
             new_state, super_state = self._exec_state(current_state, self._INIT)
             self.state = current_state
+        event.release()
         
     def run(self):
         '''Run this state machine as finite state machine with single level 
@@ -317,7 +322,7 @@ class StateMachine(threading.Thread):
         self.rm.release_all()
         
     def on_exception(self, e, state, event):
-        raise StateError(
+        raise RuntimeError(
                 e, 
                 self.__class__.__module__, 
                 self.name, 
@@ -355,6 +360,9 @@ class State(ResourceInstance):
         raise StateError(
                 'Unable to set state machine logger, use self.sm.logger')
         
+    def release(self):
+        pass
+        
     def on_entry(self):
         pass
     
@@ -370,7 +378,7 @@ class State(ResourceInstance):
         This handler gets executed in case the state does not handle the event.
         
         '''
-        self.logger.info(
+        self.logger.debug(
                 '{} {}({}) wasn\'t handled'.
                 format(self.sm.name, self.name, event.name))
         
