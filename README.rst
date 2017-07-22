@@ -156,11 +156,36 @@ The associated parameters with an event are:
 Generate an event
 ^^^^^^^^^^^^^^^^^
 
-To generate a new event just instantiate ``Event`` class:
+To generate a new event just instantiate ``Event`` class with event name as
+parameter:
 
 .. code-block:: python
 
-    new_event = fsm.Event('event_name')
+    new_event = fsm.Event('my_special_event')
+
+Alternative way is to first declare a new event class and instantiate this
+derive class:
+
+.. code-block:: python
+
+    class MySpecialEvent(fsm.Event):
+        pass
+        
+    new_event = MySpecialEvent() # This event is implicitly called 'my_special_event'
+
+In this case base ``Event`` class will implicitly take the name of the class as 
+own name. This can be overriden by calling the super constructor:
+
+.. code-block:: python
+
+    # This event has the exact same name as the above one
+    class MySecondEvent(fsm.Event):
+        def __init__(self):
+            super().__init__('my_special_event')
+
+    # Another way of creating event with same name as above events
+    class MyThirdEvent(fsm.Event):
+        name = 'my_special_event'
 
 Event class attributes and methods
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
