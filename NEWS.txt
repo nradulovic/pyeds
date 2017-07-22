@@ -8,6 +8,7 @@ News
  
  * Added support for event handlers without event argument. These handlers are
    used by state machine events: entry, exit and init.
+ * Event object are immutable
 
 0.6
 ---
