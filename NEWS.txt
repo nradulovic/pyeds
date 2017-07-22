@@ -6,7 +6,8 @@ News
 0.7
 ---
  
- * Added support for Signals
+ * Added support for event handlers without event argument. These handlers are
+   used by state machine events: entry, exit and init.
 
 0.6
 ---
