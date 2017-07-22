@@ -10,13 +10,12 @@ try:
 except ImportError:
     from pyeds import fsm
     
-from logging import basicConfig, DEBUG, getLogger
-import sys
+import logging
 
-basicConfig(level=DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 class HypotheticalMachine(fsm.StateMachine):
-    logger = getLogger('app')
+    logger = logging.getLogger('app')
     foo = 0
 
 @fsm.DeclareState(HypotheticalMachine)
@@ -47,7 +46,6 @@ class StateS(fsm.State):
     def on_terminate(self, event):
         print('S:terminate')
         self.sm.terminate()
-        sys.exit(0)
         
     def on_e(self, event):
         print('S:e')
@@ -217,7 +215,7 @@ def main():
         for signal in test_input_sequence:
             sm.send(fsm.Event(signal))
     except KeyboardInterrupt:
-        sm.release()
+        sm.terminate()
     sm.wait()
 
 if __name__ == '__main__':
