@@ -20,28 +20,40 @@ INIT_SIGNAL = 'init'
 class _PathManager(object):
     def __init__(self):
         self.depth = 1
-        self._states_path_map = {}
+        self._state_hieararchy_map = {}
+        self._state_path_map = {}
+        self._state_translation_map = {}
         self._exit = []
         self._enter = []
         
-    def _build_state_depth(self, state):
-        state_depth = []
+    def _build_state_cls_depth(self, state_cls):
+        state_cls_depth = ()
+        parent = self._state_hieararchy_map[state_cls]
         
-        while state is not None:
-            state_depth += [state]
-            state = state.path_parent
+        while parent is not None:
+            state_cls_depth += (parent,)
+            parent = self._state_hieararchy_map[parent]
             
-        return state_depth
+        return state_cls_depth
 
-    def add(self, state, super_state):
-        state.path_parent = super_state
-        self._states_path_map[state] = []
+    def add(self, state_cls, parent_state_cls):
+        self._state_hieararchy_map[state_cls] = parent_state_cls
         
     def build(self):
-        for state in self._states_path_map.keys():
-            path = self._build_state_depth(state)
-            self.depth = max(self.depth, len(path))
-            self._states_path_map[state] = path
+        # Build translation map
+        for state_cls in self._state_hieararchy_map.keys():
+            self._state_translation_map[state_cls] = state_cls()
+        # Build path map
+        for state_cls in self._state_hieararchy_map.keys():
+            state_cls_depth = self._build_state_cls_depth(state_cls)
+            self.depth = max(self.depth, len(state_cls_depth))
+            self._state_path_map[self.instance_of(state_cls)] = \
+                    ([self.instance_of(item) for item in state_cls_depth])
+        del self._state_hieararchy_map
+        # Ensure that there is at least one element in the dict so we don't get
+        # KeyError elsewhere in the code
+        self._state_translation_map[None] = None
+        self._state_path_map[None] = None
             
     def generate(self, source, destination):
         # NOTE: Transition type A, most common transition
@@ -49,12 +61,18 @@ class _PathManager(object):
             self._enter += [destination]
             self._exit += [source]
         else:
-            source_path = self._states_path_map[source]
-            destination_path = self._states_path_map[destination]
+            source_path = self._state_path_map[source]
+            destination_path = self._state_path_map[destination]
             intersection = set(source_path) & set(destination_path)
             self._exit += [s for s in source_path if s not in intersection]
             self._enter += [s for s in destination_path if s not in intersection]
     
+    def parent_of(self, state):
+        return self._state_path_map[state][0]
+        
+    def instance_of(self, state_cls):
+        return self._state_translation_map[state_cls]
+        
     def pend_exit(self, node):
         self._exit += [node]
         
@@ -68,10 +86,6 @@ class _PathManager(object):
     def enter(self):
         return reversed(self._enter)
 
-
-class _PathNode(object):
-    path_parent = None
-    
 
 class StateError(Exception):
     pass
@@ -160,9 +174,8 @@ class StateMachine(threading.Thread):
         super().__init__(name=self.__class__.__name__, daemon=True)
         self._queue = queue.Queue(queue_size)
         self._pathman = _PathManager()
-        self._states_obj_map = {}
         self.rm = ResourceManager()
-        self.state = init_state
+        self.state_cls = init_state
         
         # Start the FSM   
         self.start()
@@ -179,13 +192,8 @@ class StateMachine(threading.Thread):
         for state_cls in self.state_clss:
             self.logger.info(
                     '{} initializing {}'.format(self.name, state_cls.__name__))
-            self._states_obj_map[state_cls] = state_cls()
+            self._pathman.add(state_cls, state_cls.super_state)
             
-        # This loop will setup super states of all states and build hierarchy
-        for state in self._states_obj_map.values():
-            self._pathman.add(
-                    state, 
-                    self._states_obj_map.get(state.super_state))
         self._pathman.build()
         self.logger.info(
             '{} hierarchy is {} level(s) deep'.format(
@@ -194,18 +202,16 @@ class StateMachine(threading.Thread):
         
         # If we were called without initial state argument then implicitly set
         # the first declared state as initialization state. 
-        if self.state is None:
-            self.state = self._states_obj_map[self.state_clss[0]]
+        if self.state_cls is None:
+            self.state = self._pathman.instance_of(self.state_clss[0])
         else:
             # Also check if init_state is endeed a State class
             try:
-                self.state = self._states_obj_map[self.state]
+                self.state = self._pathman.instance_of(self.state_cls)
             except KeyError:
                 raise StateMachineError(
                         'init_state argument \'{!r}\' is not a valid'
-                        'subclass of State class'.format(self.state))
-        # Add a special case when a state may return None    
-        self._states_obj_map[None] = None
+                        'subclass of State class'.format(self.state_cls))
     
     def _exec_state(self, state, event):
         try:
@@ -214,31 +220,24 @@ class StateMachine(threading.Thread):
                     state, 
                     '{}{}'.format(EVENT_HANDLER_PREFIX, event.name))
         except AttributeError:
-            super_state = state.path_parent
+            super_state = self._pathman.parent_of(state)
             handler = state.on_unhandled_event
         finally:
             try:
                 new_state_cls = event.execute(handler)
             except Exception as e:
                 self.on_exception(e, state, event)
+                # This state has caused an error, no transitions will be done
                 new_state_cls = None
         try:
-            new_state = self._states_obj_map[new_state_cls]
+            new_state = self._pathman.instance_of(new_state_cls)
         except KeyError:
             raise StateMachineError(
-                    'Returned state \'{!r}\' is not a valid'
+                    'Target state \'{!r}\' is not a valid'
                     'subclass of State class'.format(new_state_cls))
                 
         return (new_state, super_state)
     
-    def _release_state_resources(self, state):
-        # Release any resource associated with current state
-        for resource in state.resources.values():
-            self.logger.debug(
-                    '{} deleting resource {}'.format(self.name, resource.name))
-            resource.release()
-        state.resources = {}
-        
     def _dispatch(self, event):
         current_state = self.state
         self._pathman.reset()
@@ -296,7 +295,7 @@ class StateMachine(threading.Thread):
             self._dispatch(event)
             self._queue.task_done()
             
-    def put(self, event, block=True, timeout=None):
+    def send(self, event, block=True, timeout=None):
         '''Put an event to this state machine
 
         The event is put to state machine queue and then the run() method will
@@ -312,7 +311,7 @@ class StateMachine(threading.Thread):
         self.join(timeout)
         
     def instance_of(self, state_cls):
-        return self._states_obj_map[state_cls]
+        return self._pathman.instance_of(state_cls)
                 
     def on_terminate(self):
         self.rm.release_all()
@@ -326,7 +325,7 @@ class StateMachine(threading.Thread):
                 event.name)
         
         
-class State(_PathNode, ResourceInstance):
+class State(ResourceInstance):
     '''This class implements a state.
 
     Each state is represented by a class. Every method of this class processes
@@ -347,8 +346,14 @@ class State(_PathNode, ResourceInstance):
     def sm(self):
         return self.producer
     
+    @property
     def logger(self):
         return self.producer.logger
+        
+    @logger.setter
+    def logger(self, logger):
+        raise StateError(
+                'Unable to set state machine logger, use self.sm.logger')
         
     def on_entry(self):
         pass

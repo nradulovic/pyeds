@@ -215,7 +215,7 @@ def main():
         ]
     try:
         for signal in test_input_sequence:
-            sm.put(fsm.Event(signal))
+            sm.send(fsm.Event(signal))
     except KeyboardInterrupt:
         sm.release()
     sm.wait()
