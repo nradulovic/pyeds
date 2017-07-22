@@ -10,6 +10,7 @@ import queue
 import logging
 import threading
 
+from . import lib
 
 EVENT_HANDLER_PREFIX = 'on_'
 ENTRY_SIGNAL = 'entry'
@@ -128,11 +129,6 @@ class ResourceInstance(object):
     Arguments are:
     *name* is the name of the resource 
     '''
-    name = ''
-    '''This is a string containing State name'''
-    producer = None
-    '''Specifies which state machine has this state'''
-    
     def __init__(self, name=None):
         self.name = name if name is not None else self.__class__.__name__
         self.producer = current_sm()
@@ -351,14 +347,17 @@ class State(ResourceInstance):
     def sm(self):
         return self.producer
     
+    @sm.setter
+    def sm(self):
+        raise AttributeError('Can\'t set attribute sm')
+    
     @property
     def logger(self):
         return self.producer.logger
         
     @logger.setter
     def logger(self, logger):
-        raise StateError(
-                'Unable to set state machine logger, use self.sm.logger')
+        raise AttributeError('Can\'t set attribute logger')
         
     def release(self):
         pass
@@ -411,7 +410,7 @@ class DeclareState(object):
         return state_cls
         
         
-class Event(ResourceInstance):
+class Event(lib.Immutable, ResourceInstance):
     '''Event class
     
     An event is the only means of communication between state machines. Each 
