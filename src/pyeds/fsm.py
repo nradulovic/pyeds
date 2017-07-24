@@ -6,11 +6,11 @@ Created on Jul 7, 2017
 
 __author__ = 'Nenad Radulovic <nenad.b.radulovic@gmail.com>'
 
-import queue
 import logging
-import threading
 
 from . import lib
+from . import exceptions
+from . import coordinator
 
 EVENT_HANDLER_PREFIX = 'on_'
 ENTRY_SIGNAL = 'entry'
@@ -22,60 +22,60 @@ class _PathManager(object):
     def __init__(self):
         self.depth = 1
         self.no_states = 0
-        self._node_hierarchy_map = {}
-        self._node_path_map = {}
-        self._node_translation_map = {}
+        self._hierarchy_map = {}
+        self._path_map = {}
+        self._translation_map = {}
         self._exit = []
         self._enter = []
         
     def _build_node_cls_depth(self, node_cls):
         node_cls_depth = ()
-        parent = self._node_hierarchy_map[node_cls]
+        parent = self._hierarchy_map[node_cls]
         
         while parent is not None:
             node_cls_depth += (parent,)
-            parent = self._node_hierarchy_map[parent]
+            parent = self._hierarchy_map[parent]
             
         return node_cls_depth
 
     def add_cls(self, node_cls, parent_node_cls):
-        self._node_hierarchy_map[node_cls] = parent_node_cls
+        self._hierarchy_map[node_cls] = parent_node_cls
         self.no_states += 1
         
     def build(self):
         # Build translation map
-        for node_cls in self._node_hierarchy_map.keys():
-            self._node_translation_map[node_cls] = node_cls()
+        for node_cls in self._hierarchy_map.keys():
+            self._translation_map[node_cls] = node_cls()
         # Build path map
-        for node_cls in self._node_hierarchy_map.keys():
+        for node_cls in self._hierarchy_map.keys():
             node_cls_depth = self._build_node_cls_depth(node_cls)
             self.depth = max(self.depth, len(node_cls_depth))
-            self._node_path_map[self.instance_of(node_cls)] = \
+            self._path_map[self.instance_of(node_cls)] = \
                     ([self.instance_of(i) for i in node_cls_depth])
         # We don't need hierarchy map anymore
-        del self._node_hierarchy_map
-        # Ensure that there is at least one element in the dict so we don't get
+        del self._hierarchy_map
+        # Ensure that there is at least None element in the dict so we don't get
         # KeyError elsewhere in the code
-        self._node_translation_map[None] = None
-        self._node_path_map[None] = None
+        self._translation_map[None] = None
+        self._path_map[None] = None
             
     def generate(self, source, destination):
-        # NOTE: Transition type A, most common transition
+        # NOTE: Transition type A, special case
         if source == destination:
-            self._enter += [destination]
+            self._enter += [source]
             self._exit += [source]
         else:
-            source_path = self._node_path_map[source]
-            destination_path = self._node_path_map[destination]
-            intersection = set(source_path) & set(destination_path)
-            self._exit += [s for s in source_path if s not in intersection]
-            self._enter += [s for s in destination_path if s not in intersection]
+            src_path = self._path_map[source]
+            dst_path = self._path_map[destination]
+            intersection = set(src_path) & set(dst_path)
+            self._exit += [s for s in src_path if s not in intersection]
+            self._enter += [s for s in dst_path if s not in intersection]
     
     def parent_of(self, node):
-        return self._node_path_map[node][0]
+        return self._path_map[node][0]
         
     def instance_of(self, node_cls):
-        return self._node_translation_map[node_cls]
+        return self._translation_map[node_cls]
         
     def pend_exit(self, node):
         self._exit += [node]
@@ -84,21 +84,13 @@ class _PathManager(object):
         self._exit = []
         self._enter = []
         
-    def exit(self):
+    def exit_iterator(self):
         return iter(self._exit)
     
-    def enter(self):
+    def enter_iterator(self):
         return reversed(self._enter)
 
 
-class StateError(Exception):
-    pass
-
-
-class StateMachineError(Exception):
-    pass
-
-      
 class ResourceManager(object):
     def __init__(self):
         self._resources = {}
@@ -130,7 +122,9 @@ class ResourceInstance(object):
     *name* is the name of the resource 
     '''
     def __init__(self, name=None):
-        self.name = name if name is not None else self.__class__.__name__
+        # Try to setup the name of this resource instance
+        if not hasattr(self, 'name'):
+            self.name = name if name is not None else self.__class__.__name__
         self.producer = current_sm()
 
     def release(self):
@@ -139,7 +133,7 @@ class ResourceInstance(object):
                 .format(self.__class__.__name__))    
     
     
-class StateMachine(threading.Thread):
+class StateMachine(object):
     '''This class implements a state machine.
 
     This class is a controller class of state machine.
@@ -152,6 +146,8 @@ class StateMachine(threading.Thread):
 
     '''
     logger = logging.getLogger(None)
+    init_state = None
+    rm = None
     
     def __init__(self, init_state=None, queue_size=64):
         '''This constructor should always be called with keyword arguments. 
@@ -170,14 +166,16 @@ class StateMachine(threading.Thread):
         else to the state machine.
 
         '''
-        super().__init__(name=self.__class__.__name__, daemon=True)
-        self._queue = queue.Queue(queue_size)
-        self._pathman = _PathManager()
+        name = self.__class__.__name__
+        self._queue = coordinator.Queue(queue_size)
+        self._pm = _PathManager()
+        self._thread = coordinator.Thread(target=self.event_loop, name=name)
+        self.name = name
         self.rm = ResourceManager()
-        self.state_cls = init_state
-        
-        # Start the FSM   
-        self.start()
+        if init_state is not None:
+            self.init_state = init_state
+        self._thread.sm = self
+        self._thread.start()
         
     def _setup_fsm(self):
         class Signal(Event):
@@ -186,32 +184,33 @@ class StateMachine(threading.Thread):
         self._ENTRY = Signal(ENTRY_SIGNAL)
         self._EXIT = Signal(EXIT_SIGNAL)
         self._INIT = Signal(INIT_SIGNAL)
-        
-        # This loop will instantiate all state classes
+        # This loop will add all state classes to path manager
         for state_cls in self.state_clss:
             self.logger.info(
-                    '{} initializing {}'.format(self.name, state_cls.__name__))
-            self._pathman.add_cls(state_cls, state_cls.super_state)
-            
-        self._pathman.build()
+                    '{} adding {}'.format(self.name, state_cls.__name__))
+            self._pm.add_cls(state_cls, state_cls.super_state)
+        # Instantiate added state classes and build path
+        self._pm.build()
         self.logger.info(
             '{} hierarchy is {} level(s) deep, {} state(s)'.format(
                     self.name, 
-                    self._pathman.depth,
-                    self._pathman.no_states))
-        
+                    self._pm.depth,
+                    self._pm.no_states))
         # If we were called without initial state argument then implicitly set
         # the first declared state as initialization state. 
-        if self.state_cls is None:
-            self.state = self._pathman.instance_of(self.state_clss[0])
+        if self.init_state is None:
+            self.state = self._pm.instance_of(self.state_clss[0])
         else:
             # Also check if init_state is endeed a State class
             try:
-                self.state = self._pathman.instance_of(self.state_cls)
+                self.state = self._pm.instance_of(self.init_state)
             except KeyError:
-                raise StateMachineError(
+                raise exceptions.StateMachineError(
                         'init_state argument \'{!r}\' is not a valid'
-                        'subclass of State class'.format(self.state_cls))
+                        'subclass of State class'.format(self.init_state))
+        self.logger.info(
+                '{} {} is initial state'.
+                format(self.name, self.state.name))
     
     def _exec_state(self, state, event):
         try:
@@ -220,33 +219,32 @@ class StateMachine(threading.Thread):
                     state, 
                     '{}{}'.format(EVENT_HANDLER_PREFIX, event.name))
         except AttributeError:
-            super_state = self._pathman.parent_of(state)
+            super_state = self._pm.parent_of(state)
             handler = state.on_unhandled_event
         finally:
             try:
                 new_state_cls = event.execute(handler)
             except Exception as e:
-                self.on_exception(e, state, event)
+                self.on_exception(e, state, event, 'State exception')
                 # This state has caused an error, no transitions will be done
                 new_state_cls = None
         try:
-            new_state = self._pathman.instance_of(new_state_cls)
+            new_state = self._pm.instance_of(new_state_cls)
         except KeyError:
-            raise StateMachineError(
+            raise exceptions.StateMachineError(
                     'Target state \'{!r}\' is not a valid'
                     'subclass of State class'.format(new_state_cls))
-                
         return (new_state, super_state)
     
     def _dispatch(self, event):
         current_state = self.state
-        self._pathman.reset()
+        self._pm.reset()
         # Loop until we find a state that will handle the event
         while True:
             new_state, super_state = self._exec_state(current_state, event)
             
             if super_state is not None:
-                self._pathman.pend_exit(current_state)
+                self._pm.pend_exit(current_state)
                 current_state = super_state
             else:
                 break
@@ -257,28 +255,22 @@ class StateMachine(threading.Thread):
                             self.name, 
                             current_state.name, 
                             new_state.name))
-            self._pathman.generate(current_state, new_state)
+            self._pm.generate(current_state, new_state)
             # Exit the path
-            for exit_state in self._pathman.exit():
+            for exit_state in self._pm.exit_iterator():
                 self._exec_state(exit_state, self._EXIT)
                 exit_state.rm.release_all()
             # Enter the path
-            for enter_state in self._pathman.enter():
+            for enter_state in self._pm.enter_iterator():
                 self._exec_state(enter_state, self._ENTRY)
-            self._pathman.reset()
+            self._pm.reset()
             current_state = new_state
             new_state, super_state = self._exec_state(current_state, self._INIT)
             self.state = current_state
         event.release()
         
-    def run(self):
-        '''Run this state machine as finite state machine with single level 
-        hierarchy.
-        
-        This method is executed automatically by class constructor.
-
-        '''
-        # Setup FSM states
+    def event_loop(self):
+        # Initialize states and build hierarchy
         self._setup_fsm()
         # Initialize the state machine
         self._dispatch(self._INIT)
@@ -309,17 +301,18 @@ class StateMachine(threading.Thread):
         self._queue.put(None, timeout=timeout)
         
     def wait(self, timeout=None):
-        self.join(timeout)
+        self._thread.join(timeout)
         
     def instance_of(self, state_cls):
-        return self._pathman.instance_of(state_cls)
+        return self._pm.instance_of(state_cls)
                 
     def on_terminate(self):
         self.rm.release_all()
         
-    def on_exception(self, e, state, event):
+    def on_exception(self, e, state, event, msg):
         raise RuntimeError(
-                e, 
+                e,
+                msg,
                 self.__class__.__module__, 
                 self.name, 
                 state.name, 
@@ -458,7 +451,7 @@ class After(ResourceInstance):
         self.start()
     
     def start(self):
-        self._timer = threading.Timer(self.timeo, self.callback, [self.event])
+        self._timer = coordinator.Timer(self.timeo, self.callback, [self.event])
         self._timer.start()        
         
     def callback(self, *args, **kwargs):
@@ -494,6 +487,10 @@ class Every(After):
         
 
 def current_sm():
-    return threading.current_thread()
+    current = coordinator.current_thread()
+    try:
+        return current.sm
+    except AttributeError:
+        return None
 
 
