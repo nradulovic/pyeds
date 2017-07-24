@@ -51,26 +51,23 @@ class _PathManager(object):
             node_cls_depth = self._build_node_cls_depth(node_cls)
             self.depth = max(self.depth, len(node_cls_depth))
             self._path_map[self.instance_of(node_cls)] = \
-                    ([self.instance_of(i) for i in node_cls_depth])
+                    tuple([self.instance_of(i) for i in node_cls_depth] + [None])
         # We don't need hierarchy map anymore
         del self._hierarchy_map
         # Ensure that there is at least None element in the dict so we don't get
         # KeyError elsewhere in the code
         self._translation_map[None] = None
-        self._path_map[None] = None
+        self._path_map[None] = [None]
             
     def generate(self, source, destination):
-        # NOTE: Transition type A, special case
-        if source == destination:
-            self._enter += [source]
-            self._exit += [source]
-        else:
-            src_path = self._path_map[source]
-            dst_path = self._path_map[destination]
-            intersection = set(src_path) & set(dst_path)
-            self._exit += [s for s in src_path if s not in intersection]
-            self._enter += [s for s in dst_path if s not in intersection]
-    
+        self._exit += [source]
+        self._enter += [destination]
+        src_path = self._path_map[source]
+        dst_path = self._path_map[destination]
+        intersection = set(src_path) & set(dst_path)
+        self._exit += [s for s in src_path if s not in intersection]
+        self._enter += [s for s in dst_path if s not in intersection]
+
     def parent_of(self, node):
         return self._path_map[node][0]
         
@@ -459,7 +456,7 @@ class After(ResourceInstance):
         
         *args* contains event object
         '''
-        self.producer.put(*args)
+        self.producer.send(*args)
 
     def release(self):
         self._timer.cancel()
