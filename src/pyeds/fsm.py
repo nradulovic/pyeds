@@ -20,7 +20,7 @@ INIT_SIGNAL = 'init'
 
 class _PathManager(object):
     def __init__(self):
-        self.depth = 1
+        self.depth = 0
         self.no_states = 0
         self._hierarchy_map = {}
         self._path_map = {}
@@ -51,19 +51,27 @@ class _PathManager(object):
             node_cls_depth = self._build_node_cls_depth(node_cls)
             self.depth = max(self.depth, len(node_cls_depth))
             self._path_map[self.instance_of(node_cls)] = \
-                    tuple([self.instance_of(i) for i in node_cls_depth] + [None])
+                    tuple(
+                              [self.instance_of(i) for i in node_cls_depth] \
+                            + [None])
         # We don't need hierarchy map anymore
         del self._hierarchy_map
         # Ensure that there is at least None element in the dict so we don't get
         # KeyError elsewhere in the code
         self._translation_map[None] = None
         self._path_map[None] = [None]
+        # Correction for hierarchy depth
+        self.depth += 1
+        
+    def states(self):
+        nodes = [node.name for node in self._translation_map.values() if node is not None]
+        return tuple(nodes)
             
     def generate(self, source, destination):
-        self._exit += [source]
-        self._enter += [destination]
-        src_path = self._path_map[source]
-        dst_path = self._path_map[destination]
+        #self._exit += [source]
+        #self._enter += [destination]
+        src_path = (source,) + self._path_map[source]
+        dst_path = (destination,) + self._path_map[destination]
         intersection = set(src_path) & set(dst_path)
         self._exit += [s for s in src_path if s not in intersection]
         self._enter += [s for s in dst_path if s not in intersection]
@@ -181,6 +189,10 @@ class StateMachine(object):
         self._ENTRY = Signal(ENTRY_SIGNAL)
         self._EXIT = Signal(EXIT_SIGNAL)
         self._INIT = Signal(INIT_SIGNAL)
+        if not hasattr(self, 'state_clss'):
+            raise exceptions.StateMachineError(
+                    '{} has no declared states, use fsm.DeclareState decorator'.
+                    format(self.name)) 
         # This loop will add all state classes to path manager
         for state_cls in self.state_clss:
             self.logger.info(
@@ -266,11 +278,27 @@ class StateMachine(object):
             self.state = current_state
         event.release()
         
+    @property
+    def depth(self):
+        return self._pm.depth
+    
+    @property
+    def no_states(self):
+        return self._pm.no_states
+    
+    @property
+    def states(self):
+        return self._pm.states()
+    
+    def instance_of(self, state_cls):
+        return self._pm.instance_of(state_cls)
+    
     def event_loop(self):
         # Initialize states and build hierarchy
         self._setup_fsm()
         # Initialize the state machine
         self._dispatch(self._INIT)
+        self.on_start()
         # Execute event loop
         while True:
             event = self._queue.get()
@@ -294,15 +322,18 @@ class StateMachine(object):
         '''
         self._queue.put(event, block, timeout)
         
-    def terminate(self, timeout=None):
-        self._queue.put(None, timeout=timeout)
-        
     def wait(self, timeout=None):
         self._thread.join(timeout)
-        
-    def instance_of(self, state_cls):
-        return self._pm.instance_of(state_cls)
                 
+    def do_start(self):
+        self._thread.start()
+            
+    def do_terminate(self, timeout=None):
+        self._queue.put(None, timeout=timeout)
+
+    def on_start(self):
+        pass
+            
     def on_terminate(self):
         self.rm.release_all()
         
@@ -396,7 +427,6 @@ class DeclareState(object):
         except AttributeError:
             # Add new attribute if it doesn't exist
             self.state_machine_cls.state_clss = [state_cls]
-        
         return state_cls
         
         
