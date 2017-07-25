@@ -3,220 +3,247 @@ Created on Jul 7, 2017
 
 @author: nenad
 '''
-
-try:
-    from src.pyeds import fsm
-    print('Imported PyEDS from project')
-except ImportError:
-    from pyeds import fsm
-    
 import logging
+import unittest
 
-logging.basicConfig(level=logging.INFO)
+from src.pyeds import fsm
+import test_simplefsm
+import test_simplehsm
+import test_events
 
-class HypotheticalMachine(fsm.StateMachine):
-    logger = logging.getLogger('app')
-    foo = 0
+logging.basicConfig(level=logging.ERROR)
 
-@fsm.DeclareState(HypotheticalMachine)
-class StateInitial(fsm.State):
-    def on_entry(self):
-        pass
+class EventTestCase(unittest.TestCase):
+    def test_event_class_name(self):
+        class MyEvent(fsm.Event):
+            pass
+        my_event = MyEvent()
+        self.assertEqual(MyEvent.__name__, my_event.name)
         
-    def on_exit(self):
-        pass
+    def test_event_arg_name(self):
+        name = 'my_name'
+        my_event = fsm.Event(name)
+        self.assertEqual(name, my_event.name)
         
-    def on_init(self):
-        self.sm.foo = 0
-        return StateS2
-    
-
-@fsm.DeclareState(HypotheticalMachine)
-class StateS(fsm.State):
-    def on_entry(self):    
-        print('S:entry')
+    def test_event_data_set(self):
+        event = fsm.Event('event')
+        data = 'some data'
+        self.assertEqual(
+            data, 
+            test_events.test_event_data_set(event, data).data)
         
-    def on_exit(self):
-        print('S:exit')
+    def test_event_immutability(self):
+        event = fsm.Event('event')
+        self.assertRaises(
+                AttributeError, 
+                test_events.test_event_immutability, event)
     
-    def on_init(self):
-        print('S:init')
-        return StateS11
     
-    def on_terminate(self, event):
-        print('S:terminate')
-        self.sm.terminate()
+class FsmTestCase(unittest.TestCase):
+    def test_fsm_states(self):
+        expected = (
+                'StateA1', 
+                'StateA2', 
+                'StateA3', 
+                'StateA4', 
+                'StateA5', 
+                'StateA6', 
+                'StateA7'
+                )
+        sm = test_simplefsm.SimpleFSM()
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.states
+        self.assertEqual(
+                set(retval),
+                set(expected), 
+                '{} is not as expected {}'.format(retval, expected))
+         
+    def test_fsm_state_adding(self):
+        expected = [
+                'StateA1', 
+                'StateA2', 
+                'StateA3', 
+                'StateA4', 
+                'StateA5', 
+                'StateA6', 
+                'StateA7'
+                ]
+        sm = test_simplefsm.SimpleFSM()
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.added_states
+        self.assertEqual(
+                set(retval),
+                set(expected), 
+                '{} is not as expected {}'.format(retval, expected))
         
-    def on_e(self, event):
-        print('S:e')
-        return StateS11
-    
-    def on_i(self, event):
-        print('S:i[foo]:foo=0')
-        if self.sm.foo != 0:
-            self.sm.foo = 0
-    
-    
-@fsm.DeclareState(HypotheticalMachine)
-class StateS1(fsm.State):
-    super_state = StateS
-    
-    def on_entry(self):
-        print('S1:entry')
+    def test_fsm_state_count(self):
+        expected = 7
+        sm = test_simplefsm.SimpleFSM()
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.no_states
+        self.assertEqual(
+                retval,
+                expected, 
+                '{} is not as expected {}'.format(retval, expected))
         
-    def on_exit(self):
-        print('S1:exit')
+    def test_fsm_state_depth(self):
+        expected = 1
+        sm = test_simplefsm.SimpleFSM()
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.depth
+        self.assertEqual(
+                retval,
+                expected, 
+                '{} is not as expected {}'.format(retval, expected))
         
-    def on_init(self):
-        print('S1:init')
-        return StateS11
-    
-    def on_a(self, event):
-        print('S1:a')
+    def test_fsm_idle(self):
+        expected = ['StateA1:i']
+        sm = test_simplefsm.SimpleFSM()
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.out_seq
+        self.assertEqual(
+                retval,
+                expected, 
+                '{} is not as expected {}'.format(retval, expected))
         
-    def on_b(self, event):
-        print('S1:b')
-        return StateS11
-    
-    def on_c(self, event):
-        print('S1:c')
-        return StateS2
-    
-    def on_d(self, event):
-        print('S1:d[!foo]/foo=1')
-        if self.sm.foo == 0:
-            self.sm.foo = 1
-            return StateS
-    
-    def on_f(self, event):
-        print('S1:f')
-        return StateS211
-    
-    def on_i(self, event):
-        print('S1:i')
+    def test_fsm_simple_transitions(self):
+        expected = [
+                'StateA1:i', 
+                'StateA1:x', 
+                'StateA2:e', 
+                'StateA2:i', 
+                'StateA2:x', 
+                'StateA3:e', 
+                'StateA3:i', 
+                'StateA3:x', 
+                'StateA4:e', 
+                'StateA4:i', 
+                'StateA4:x', 
+                'StateA5:e', 
+                'StateA5:i', 
+                'StateA5:x', 
+                'StateA6:e', 
+                'StateA6:i', 
+                'StateA6:x', 
+                'StateA7:e', 
+                'StateA7:i', 
+                'StateA7:x', 
+                'StateA1:e', 
+                'StateA1:i']
+        sm = test_simplefsm.SimpleFSM()
+        event = fsm.Event('a')
+        for i in range(7):
+            sm.send(event)
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.out_seq
+        self.assertEqual(
+                retval,
+                expected, 
+                '{} is not as expected {}'.format(retval, expected))
+        
+    def test_fsm_missing_transitions(self):
+        expected = [
+            'StateA1:i',
+            'StateA1:x', 
+            'StateA2:e', 
+            'StateA2:i'
+            ]
+        sm = test_simplefsm.SimpleFSM()
+        event = fsm.Event('a')
+        sm.send(event)
+        event = fsm.Event('b')
+        sm.send(event)
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.out_seq
+        self.assertEqual(
+                retval,
+                expected, 
+                '{} is not as expected {}'.format(retval, expected))
+        
+class HsmTestCase(unittest.TestCase):
+    def test_hsm_states(self):
+        expected = (
+                'StateA', 
+                'StateA1', 
+                'StateB', 
+                )
+        sm = test_simplehsm.SimpleHSM()
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.states
+        self.assertEqual(
+                set(retval),
+                set(expected), 
+                '{} is not as expected {}'.format(retval, expected))
+        
+    def test_hsm_state_count(self):
+        expected = 3
+        sm = test_simplehsm.SimpleHSM()
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.no_states
+        self.assertEqual(
+                retval,
+                expected, 
+                '{} is not as expected {}'.format(retval, expected))
+        
+    def test_hsm_state_depth(self):
+        expected = 2
+        sm = test_simplehsm.SimpleHSM()
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.depth
+        self.assertEqual(
+                retval,
+                expected, 
+                '{} is not as expected {}'.format(retval, expected))
+        
+    def test_hsm_transitions(self):
+        event_ids = (
+            )
+        expected = (
+                'StateA:i', 
+                'StateA1:x', 
+                'StateA2:e', 
+                'StateA2:i', 
+                'StateA2:x', 
+                'StateA3:e', 
+                'StateA3:i', 
+                'StateA3:x', 
+                'StateA4:e', 
+                'StateA4:i', 
+                'StateA4:x', 
+                'StateA5:e', 
+                'StateA5:i', 
+                'StateA5:x', 
+                'StateA6:e', 
+                'StateA6:i', 
+                'StateA6:x', 
+                'StateA7:e', 
+                'StateA7:i', 
+                'StateA7:x', 
+                'StateA1:e', 
+                'StateA1:i'
+                )
+        sm = test_simplefsm.SimpleFSM()
+        event = fsm.Event('a')
+        for event_id in event_ids:
+            sm.send(event)
+        sm.do_terminate()
+        sm.wait()
+        retval = sm.out_seq
+        self.assertEqual(
+                retval,
+                expected, 
+                '{} is not as expected {}'.format(retval, expected))
         
         
-@fsm.DeclareState(HypotheticalMachine)
-class StateS11(fsm.State):
-    super_state = StateS1
-        
-    def on_entry(self):
-        print('S11:entry')
-
-    def on_exit(self):
-        print('S11:exit')
-        
-    def on_init(self):
-        print('S11:init')
-        
-    def on_d(self, event):
-        print('S11:d[foo]/foo=0')
-        if self.sm.foo != 0:
-            self.sm.foo = 0
-            return StateS1
-        
-    def on_g(self, event):
-        print('S11:g')
-        return StateS211
-    
-    def on_h(self, event):
-        return StateS
-    
-    
-@fsm.DeclareState(HypotheticalMachine)
-class StateS2(fsm.State):
-    super_state = StateS
-    
-    def on_entry(self):
-        print('S2:entry')
-
-    def on_exit(self):
-        print('S2:exit')
-        
-    def on_init(self):
-        print('S2:init')
-        return StateS211
-    
-    def on_c(self, event):
-        print('S2:c')
-        return StateS1
-
-    def on_f(self, event):
-        print('S2:f')
-        return StateS11
-    
-    
-@fsm.DeclareState(HypotheticalMachine)
-class StateS21(fsm.State):
-    super_state = StateS2
-    
-    def on_entry(self):
-        print('S21:entry')
-        
-    def on_exit(self):
-        print('S21:exit')
-        
-    def on_init(self):
-        print('S21:init')
-        return StateS211
-    
-    def on_a(self, event):
-        print('S21:a')
-        return StateS21
-    
-    def on_b(self, event):
-        print('S21:b')
-        return StateS211
-    
-    def on_g(self, event):
-        print('S21:g')
-        return StateS11
-    
-@fsm.DeclareState(HypotheticalMachine)
-class StateS211(fsm.State):
-    super_state = StateS21
-
-    def on_entry(self):
-        print('S211:entry')
-        
-    def on_exit(self):
-        print('S211:exit')
-        
-    def on_init(self):
-        print('S211:init')
-
-    def on_d(self, event):
-        print('S211:d')
-        return StateS21
-    
-    def on_h(self, event):
-        print('S211:h')
-        return StateS
-        
-        
-def main():
-    sm = HypotheticalMachine()
-    
-    test_input_sequence = [
-        'g',
-        'i',
-        'a',
-        'd',
-        'd',
-        'c',
-        'e',
-        'e',
-        'g',
-        'i',
-        'i',
-        'terminate'
-        ]
-    try:
-        for signal in test_input_sequence:
-            sm.send(fsm.Event(signal))
-    except KeyboardInterrupt:
-        sm.terminate()
-    sm.wait()
-
 if __name__ == '__main__':
-    main()
+    unittest.main()
