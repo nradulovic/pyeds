@@ -3,6 +3,11 @@
 News
 ====
 
+0.7.3
+-----
+
+ * Minor code documentation
+
 0.7
 ---
  

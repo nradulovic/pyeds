@@ -1,24 +1,27 @@
-Python Event Driven System
-==========================
+**Python Event Driven System**
+
+.. contents:: Table of contents
+   :backlinks: top
+   :local:
 
 Introduction
-------------
+============
 
 This package provides a system allows to efficiently write finite state machines 
 (FSM) by hand. The focus was to make the API as simplest as possible since no 
 GUI tools are included to define a FSM.
 
 Installation
-------------
+============
 
 PyEDS can be installed using the standard Python tool ``pip`` with
 
-.. code-block:: bash
+.. code-block:: console
 
     pip install pyeds
 
 How to use it
--------------
+=============
 
 The basic routine to create a state machine is the following:
  1) Declare a FSM class 
@@ -26,14 +29,14 @@ The basic routine to create a state machine is the following:
  3) Instantiate FSM class
  
 Declaring a FSM class
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 FSM class is the entry point of a FSM which is used to receive events (see 
 below) and do the transitions between states. Each FSM must declare it's own 
 class which is a subclass of ``StateMachine``. The simplest way is to just
 declare an empty class which inherits the class ``StateMachine``:
 
-.. code-block:: python
+.. code:: python
 
     from pyeds import fsm
     
@@ -41,7 +44,7 @@ declare an empty class which inherits the class ``StateMachine``:
         pass
    
 Declaring a state class
-^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------
 
 Each state is represented by different class. Every method in that class may 
 handle one particular event. To declare the state, a class must be decorated 
@@ -49,7 +52,7 @@ with ``DeclareState`` decorator which require state machine as an argument.
 This decorator binds the state class to the specific FSM class. Also, the new 
 state class must be a subclass of ``State`` class:
 
-.. code-block:: python
+.. code:: python
 
     @fsm.DeclareState(MyFsm)
     class MyState(fsm.State):
@@ -58,18 +61,18 @@ state class must be a subclass of ``State`` class:
 Declare a new class per state.
     
 Instantiating the FSM
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 To instantiate the FSM class do the following:
 
-.. code-block:: python
+.. code:: python
 
     my_fsm = MyFsm()
     
 After object initialization the FSM is put into running state.
 
 Blinky example
---------------
+==============
 
 The following is an example of FSM which is called Blinky. The FSM will print 
 'on' text and 'off' text on console with 0.5 seconds of delay between the 
@@ -81,7 +84,7 @@ The Blinky FSM has 2 states:
  
 ::
 
-    *----+
+    o----+
          |
      On  v                Off
     +----+----+  blink   +---------+
@@ -93,7 +96,7 @@ The Blinky FSM has 2 states:
 
 The event ``blink`` is used to trigger transitions between the states.
 
-.. code-block:: python
+.. code:: python
 
     from pyeds import fsm
 
@@ -138,7 +141,7 @@ The event ``blink`` is used to trigger transitions between the states.
 After creation the FSM is automatically put into a running state.
 
 Event
------
+=====
 
 An event is a notable occurrence at a particular point in time. Events can, but
 do not necessarily, cause state transitions from one state to another in state 
@@ -154,19 +157,19 @@ The associated parameters with an event are:
  - producer of event
  
 Generate an event
-^^^^^^^^^^^^^^^^^
+-----------------
 
 To generate a new event just instantiate ``Event`` class with event name as
 parameter:
 
-.. code-block:: python
+.. code:: python
 
     new_event = fsm.Event('my_special_event')
 
 Alternative way is to first declare a new event class and instantiate this
 derive class:
 
-.. code-block:: python
+.. code:: python
 
     class MySpecialEvent(fsm.Event):
         pass
@@ -176,7 +179,7 @@ derive class:
 In this case base ``Event`` class will implicitly take the name of the class as 
 own name. This can be overriden by calling the super constructor:
 
-.. code-block:: python
+.. code:: python
 
     # This event has the exact same name as the above one
     class MySecondEvent(fsm.Event):
@@ -188,7 +191,7 @@ own name. This can be overriden by calling the super constructor:
         name = 'my_special_event'
 
 Event class attributes and methods
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------
 
 Attributes:
  - ``self.name`` - this is a string containing event name
@@ -201,7 +204,7 @@ Methods:
    is used to modify how an event handler is called.
 
 Rules about event naming
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
 When an event is created and sent to a state machine it's name is used to decide
 which method in current state instance should be invoked. The state machine 
@@ -219,16 +222,19 @@ A Python identifier starts with a letter A to Z or a to z or an underscore (_)
 followed by zero or more letters, underscores and digits (0 to 9). Python does 
 not allow punctuation characters such as @, $, and % within identifiers. 
 
-.. code-block:: python
+.. code:: python
 
     ok_event = fsm.Event('some_event_with_long_name')
     bad_event = fsm.Event('you cannot use spaces, @, $ and % here')
 
 State
------
+=====
+
+A state is a description of the status of a system that is waiting to execute 
+a transition.
 
 State attributes and methods
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------
 
 Attributes:
  - ``self.name`` - this is a string containing state name
@@ -252,10 +258,10 @@ Methods:
    no event handlers where found for this state
    
 State machine
--------------
+=============
 
 State machine attributes and methods
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------
 
 Attributes:
  - ``self.name`` - this is a string containing Sstate machine name
@@ -275,8 +281,8 @@ Methods:
  - ``on_terminate`` - gets called by state machine just before termination
  - ``on_exception`` - gets called when unhandled exception has occured
  
-Transition
-----------
+State transition
+================
 
 Switching from one state to another is called state transition. A transition is 
 a set of actions to be executed when a condition is fulfilled or when an event 
@@ -284,20 +290,20 @@ is received.
 
 Transitions are started by returning target state class in an event handler.
 
-.. code-block:: python
+.. code:: python
  
     def on_some_event(self, event):
         do_some_stuff()
         return SomeOtherState # Note: return a class object, not instance object
 
 Hierarchical Finite State Machines (HFSM)
------------------------------------------
+=========================================
 
 Please, refer to Wikipedia article for further explanation: 
  - https://en.wikipedia.org/wiki/UML_state_machine#Hierarchically_nested_states 
 
 Source
-------
+======
 
 Source is available at github:
  - https://github.com/nradulovic/pyeds

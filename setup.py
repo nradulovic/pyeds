@@ -13,12 +13,12 @@ README = read('README.rst')
 NEWS = read('NEWS.txt')
 
 
-version = '0.7'
+version = '0.7.3'
 
 setup(name='pyeds',
     version=version,
     description='Python Event Driven System',
-    long_description=README + '\n\n' + NEWS,
+    long_description=README,
     classifiers=[
         # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
         'Development Status :: 3 - Alpha',
