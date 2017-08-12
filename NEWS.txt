@@ -3,9 +3,16 @@
 News
 ====
 
+0.7.5
+-----
+
+ * Removed custom exceptions
+
 0.7.4
 -----
 
+ * Minor code documentation
+ 
 0.7.3
 -----
 
