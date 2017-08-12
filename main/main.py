@@ -207,40 +207,45 @@ class HsmTestCase(unittest.TestCase):
         
     def test_hsm_transitions(self):
         event_ids = (
-            )
+            'a',
+            'a',
+            'a',
+            'a',
+            'a',
+            'a',
+            'a')
         expected = (
-                'StateA:i', 
-                'StateA1:x', 
-                'StateA2:e', 
-                'StateA2:i', 
-                'StateA2:x', 
-                'StateA3:e', 
-                'StateA3:i', 
-                'StateA3:x', 
-                'StateA4:e', 
-                'StateA4:i', 
-                'StateA4:x', 
-                'StateA5:e', 
-                'StateA5:i', 
-                'StateA5:x', 
-                'StateA6:e', 
-                'StateA6:i', 
-                'StateA6:x', 
-                'StateA7:e', 
-                'StateA7:i', 
-                'StateA7:x', 
-                'StateA1:e', 
-                'StateA1:i'
+            'StateA1:i', 
+            'StateA1:x', 
+            'StateA2:e', 
+            'StateA2:i', 
+            'StateA2:x', 
+            'StateA3:e', 
+            'StateA3:i', 
+            'StateA3:x', 
+            'StateA4:e', 
+            'StateA4:i', 
+            'StateA4:x', 
+            'StateA5:e', 
+            'StateA5:i', 
+            'StateA5:x', 
+            'StateA6:e', 
+            'StateA6:i', 
+            'StateA6:x', 
+            'StateA7:e', 
+            'StateA7:i', 
+            'StateA7:x', 
+            'StateA1:e', 
+            'StateA1:i'
                 )
         sm = test_simplefsm.SimpleFSM()
-        event = fsm.Event('a')
         for event_id in event_ids:
-            sm.send(event)
+            sm.send(fsm.Event(event_id))
         sm.do_terminate()
         sm.wait()
         retval = sm.out_seq
         self.assertEqual(
-                retval,
+                tuple(retval),
                 expected, 
                 '{} is not as expected {}'.format(retval, expected))
         
