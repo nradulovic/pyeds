@@ -9,7 +9,6 @@ __author__ = 'Nenad Radulovic <nenad.b.radulovic@gmail.com>'
 import logging
 
 from . import lib
-from . import exceptions
 from . import coordinator
 
 EVENT_HANDLER_PREFIX = 'on_'
@@ -190,7 +189,7 @@ class StateMachine(object):
         self._EXIT = Signal(EXIT_SIGNAL)
         self._INIT = Signal(INIT_SIGNAL)
         if not hasattr(self, 'state_clss'):
-            raise exceptions.StateMachineError(
+            raise AttributeError(
                     '{} has no declared states, use fsm.DeclareState decorator'.
                     format(self.name)) 
         # This loop will add all state classes to path manager
@@ -201,10 +200,10 @@ class StateMachine(object):
         # Instantiate added state classes and build path
         self._pm.build()
         self.logger.info(
-            '{} hierarchy is {} level(s) deep, {} state(s)'.format(
-                    self.name, 
-                    self._pm.depth,
-                    self._pm.no_states))
+                '{} hierarchy is {} level(s) deep, {} state(s)'.format(
+                        self.name, 
+                        self._pm.depth,
+                        self._pm.no_states))
         # If we were called without initial state argument then implicitly set
         # the first declared state as initialization state. 
         if self.init_state is None:
@@ -214,9 +213,9 @@ class StateMachine(object):
             try:
                 self.state = self._pm.instance_of(self.init_state)
             except KeyError:
-                raise exceptions.StateMachineError(
-                        'init_state argument \'{!r}\' is not a valid'
-                        'subclass of State class'.format(self.init_state))
+                raise LookupError(
+                        'init_state argument \'{!r}\' '
+                        'is not a registered state'.format(self.init_state))
         self.logger.info(
                 '{} {} is initial state'.
                 format(self.name, self.state.name))
@@ -240,9 +239,9 @@ class StateMachine(object):
         try:
             new_state = self._pm.instance_of(new_state_cls)
         except KeyError:
-            raise exceptions.StateMachineError(
-                    'Target state \'{!r}\' is not a valid'
-                    'subclass of State class'.format(new_state_cls))
+            raise LookupError(
+                    'Target state \'{!r}\' '
+                    'is not a registered state'.format(new_state_cls))
         return (new_state, super_state)
     
     def _dispatch(self, event):
