@@ -467,13 +467,10 @@ class After(ResourceInstance):
     '''Put an event to current state machine after a specified number of seconds
 
     Example usage:
-            fsm.After(10.0, fsm.Event('blink'))
-
+            fsm.After(10.0, 'blink')
     '''
-    def __init__(self, after, event, name=None, is_local=False):
-        if name is None:
-            name = '{}.{}.{}'.format(
-                self.__class__.__name__, event.name, after)
+    def __init__(self, after, event_name, is_local=False):
+        name = '{}.{}.{}'.format(self.__class__.__name__, event_name, after)
         # Setup resource instance
         super(After, self).__init__(name=name)
         # Add your self to state or state machine resource manager
@@ -483,12 +480,11 @@ class After(ResourceInstance):
             self.producer.rm.put(self)
         # Save arguments
         self.timeo = after
-        self.event = event
+        self.event_name = event_name
         self.start()
 
     def start(self):
-        self._timer = coordinator.Timer(
-            self.timeo, self.callback, [self.event])
+        self._timer = coordinator.Timer(self.timeo, self.callback)
         self._timer.start()
 
     def callback(self, *args, **kwargs):
@@ -496,7 +492,7 @@ class After(ResourceInstance):
 
         *args* contains event object
         '''
-        self.producer.send(*args)
+        self.producer.send(Event(self.event_name))
 
     def release(self):
         self._timer.cancel()
@@ -512,11 +508,10 @@ class Every(After):
     seconds passes
 
     Example usage:
-            fsm.Every(10.0, fsm.Event('blink'))
-
+            fsm.Every(10.0, 'blink')
     '''
-    def __init__(self, every, event, name=None, is_local=False):
-        super().__init__(every, event, name=name, is_local=is_local)
+    def __init__(self, every, event_name, is_local=False):
+        super().__init__(every, event_name, is_local=is_local)
 
     def callback(self, *args, **kwargs):
         super().callback(*args, **kwargs)

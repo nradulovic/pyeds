@@ -109,10 +109,11 @@ The event ``blink`` is used to trigger transitions between the states.
 
     # The second step is to start writing the states of new state machine:
 
+
     @fsm.DeclareState(BlinkyFsm)
     class Initialization(fsm.State):
         def on_init(self):
-            fsm.Every(0.5, fsm.Event('blink'))
+            fsm.Every(0.5, 'blink')
             return StateOn
             
             
