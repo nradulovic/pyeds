@@ -20,7 +20,6 @@ INIT_SIGNAL = 'init'
 class _PathManager(object):
     def __init__(self):
         self.depth = 0
-        self.no_states = 0
         self._hierarchy_map = {}
         self._path_map = {}
         self._translation_map = {}
@@ -39,7 +38,6 @@ class _PathManager(object):
 
     def add_cls(self, node_cls, parent_node_cls):
         self._hierarchy_map[node_cls] = parent_node_cls
-        self.no_states += 1
         
     def build(self):
         # Build translation map
@@ -63,12 +61,13 @@ class _PathManager(object):
         self.depth += 1
         
     def states(self):
-        nodes = [node.name for node in self._translation_map.values() if node is not None]
-        return tuple(nodes)
+        nodes = ()
+        for node in self._translation_map.values():
+            if node is not None:
+                nodes += (node.name,)
+        return nodes    
             
     def generate(self, source, destination):
-        #self._exit += [source]
-        #self._enter += [destination]
         src_path = (source,) + self._path_map[source]
         dst_path = (destination,) + self._path_map[destination]
         intersection = set(src_path) & set(dst_path)
@@ -142,56 +141,56 @@ class StateMachine(object):
 
     This class is a controller class of state machine.
 
-    If init_state argument is given then that state will be initial state, 
-    otherwise, the first initialized state is implicitly declared as initial
-    state. The argument 'queue_size' specifies the size of event queue for this
-    state machine. If this argument is -1 then unlimited queue size will be 
-    used.
+    If init_state_cls argument is given then that state will be initial state, 
+    otherwise, the first declared (registered) state is implicitly declared as 
+    initial state. The argument 'queue_size' specifies the size of event queue 
+    for this state machine. If this argument is -1 then unlimited queue size 
+    will be used.
 
     '''
+    init_state_cls = None
+    '''Initial state class'''
     logger = logging.getLogger(None)
-    init_state = None
-    rm = None
+    '''Logger instance used by the state machine'''
+    should_autostart = True
+    '''Should machine start at initialization''' 
     
-    def __init__(self, init_state=None, queue_size=64):
+    def __init__(self, queue_size=64, name=None):
         '''This constructor should always be called with keyword arguments. 
         
         Arguments are:
 
-        *init_state* is a subclass of State class that implement the behaviour
-        for initial state. The default value is None which means that the first 
-        state that was declared will be initial state.
-
         *queue_size* is an integer specifying what is the maximum event queue
-        size.
+        size. When this argument is not given it defaults to 64.
+        
+        *name* is a string specifying the state machine name. When this argument
+        is not given them the class name is taken as the state machine name.
 
         If a subclass overrides the constructor, it must make sure to invoke
         the base class constructor (super().__init__) before doing anything
         else to the state machine.
 
         '''
-        name = self.__class__.__name__
+        self._name = name if name is not None else self.__class__.__name__
         self._queue = coordinator.Queue(queue_size)
         self._pm = _PathManager()
-        self._thread = coordinator.Thread(target=self.event_loop, name=name)
-        self.name = name
-        self.rm = ResourceManager()
-        if init_state is not None:
-            self.init_state = init_state
+        self._thread = coordinator.Thread(
+                target=self.event_loop, 
+                name=self.name)
         self._thread.sm = self
-        self._thread.start()
+        self.rm = ResourceManager()
+        if self.should_autostart:
+            self._thread.start()
         
     def _setup_fsm(self):
         class Signal(Event):
             def execute(self, handler):
-                    return handler()
+                return handler()
         self._ENTRY = Signal(ENTRY_SIGNAL)
         self._EXIT = Signal(EXIT_SIGNAL)
         self._INIT = Signal(INIT_SIGNAL)
         if not hasattr(self, 'state_clss'):
-            raise AttributeError(
-                    '{} has no declared states, use fsm.DeclareState decorator'.
-                    format(self.name)) 
+            raise AttributeError('{} has no declared states'.format(self.name)) 
         # This loop will add all state classes to path manager
         for state_cls in self.state_clss:
             self.logger.info(
@@ -203,29 +202,27 @@ class StateMachine(object):
                 '{} hierarchy is {} level(s) deep, {} state(s)'.format(
                         self.name, 
                         self._pm.depth,
-                        self._pm.no_states))
+                        len(self._pm.states())))
         # If we were called without initial state argument then implicitly set
         # the first declared state as initialization state. 
-        if self.init_state is None:
-            self.state = self._pm.instance_of(self.state_clss[0])
-        else:
-            # Also check if init_state is endeed a State class
-            try:
-                self.state = self._pm.instance_of(self.init_state)
-            except KeyError:
-                raise LookupError(
-                        'init_state argument \'{!r}\' '
-                        'is not a registered state'.format(self.init_state))
+        if self.init_state_cls is None:
+            self.init_state_cls = self.state_clss[0]
+        # Also check if init_state_cls is endeed a State class
+        try:
+            self._state = self._pm.instance_of(self.init_state_cls)
+        except KeyError:
+            raise LookupError(
+                    'init_state_cls argument \'{!r}\' '
+                    'is not a registered state'.format(self.init_state_cls))
         self.logger.info(
-                '{} {} is initial state'.
-                format(self.name, self.state.name))
+                '{} {} is initial state'.format(
+                        self.name, self._state.name))
     
     def _exec_state(self, state, event):
+        handler_name = '{}{}'.format(EVENT_HANDLER_PREFIX, event.name)
         try:
             super_state = None
-            handler = getattr(
-                    state, 
-                    '{}{}'.format(EVENT_HANDLER_PREFIX, event.name))
+            handler = getattr(state, handler_name)
         except AttributeError:
             super_state = self._pm.parent_of(state)
             handler = state.on_unhandled_event
@@ -245,7 +242,7 @@ class StateMachine(object):
         return (new_state, super_state)
     
     def _dispatch(self, event):
-        current_state = self.state
+        current_state = self._state
         self._pm.reset()
         # Loop until we find a state that will handle the event
         while True:
@@ -274,25 +271,36 @@ class StateMachine(object):
             self._pm.reset()
             current_state = new_state
             new_state, super_state = self._exec_state(current_state, self._INIT)
-            self.state = current_state
+            self._state = current_state
         event.release()
         
     @property
     def depth(self):
+        '''The depth of state machine states hierarchy'''
         return self._pm.depth
     
     @property
-    def no_states(self):
-        return self._pm.no_states
-    
-    @property
     def states(self):
+        '''List of names of registered states'''
         return self._pm.states()
     
+    @property
+    def state(self):
+        '''Current state instance'''
+        return self._state
+    
+    @property
+    def name(self):
+        '''String containing the state machine name'''
+        return self._name
+    
     def instance_of(self, state_cls):
+        '''Get the instance of state class'''
         return self._pm.instance_of(state_cls)
     
     def event_loop(self):
+        '''Event loop
+        '''
         # Initialize states and build hierarchy
         self._setup_fsm()
         # Initialize the state machine
@@ -308,35 +316,45 @@ class StateMachine(object):
                 self.logger.info('{} terminated'.format(self.name))
                 return
             self.logger.debug(
-                    '{} {}({})'.format(self.name, self.state.name, event.name))
+                    '{} {}({})'.format(self.name, self._state.name, event.name))
             self._dispatch(event)
             self._queue.task_done()
             
     def send(self, event, block=True, timeout=None):
-        '''Put an event to this state machine
+        '''Send an event to the state machine
 
-        The event is put to state machine queue and then the run() method will
-        be unblocked to process queued events.
+        The event is put to state machine queue and then the event_loop() method 
+        will process the queued event.
 
         '''
         self._queue.put(event, block, timeout)
         
     def wait(self, timeout=None):
+        '''Wait until the state machine terminates'''
         self._thread.join(timeout)
                 
     def do_start(self):
+        '''Explicitly start the state machine'''
         self._thread.start()
             
     def do_terminate(self, timeout=None):
+        '''Pend termination of the state machine. 
+        
+        After calling this method the state machine may still run. Use 
+        ``wait()`` to wait for state machine until it terminates.
+        '''
         self._queue.put(None, timeout=timeout)
 
     def on_start(self):
+        '''Gets called by state machine just before the machine starts'''
         pass
             
     def on_terminate(self):
+        '''Gets called by state machine just before the termination'''
         self.rm.release_all()
         
     def on_exception(self, e, state, event, msg):
+        '''Gets called when unhandled exception has occured'''
         raise RuntimeError(
                 e,
                 msg,
@@ -367,17 +385,9 @@ class State(ResourceInstance):
     def sm(self):
         return self.producer
     
-    @sm.setter
-    def sm(self):
-        raise AttributeError('Can\'t set attribute sm')
-    
     @property
     def logger(self):
         return self.producer.logger
-        
-    @logger.setter
-    def logger(self, logger):
-        raise AttributeError('Can\'t set attribute logger')
         
     def release(self):
         pass
@@ -437,7 +447,6 @@ class Event(lib.Immutable, ResourceInstance):
     current state class which has the same name.
     
     '''  
-    
     def __init__(self, name=None):
         '''Using this constructor ensures that each event will be tagged with
         additional information.

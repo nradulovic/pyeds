@@ -83,7 +83,7 @@ class FsmTestCase(unittest.TestCase):
         sm = test_simplefsm.SimpleFSM()
         sm.do_terminate()
         sm.wait()
-        retval = sm.no_states
+        retval = len(sm.states)
         self.assertEqual(
                 retval,
                 expected, 
@@ -188,7 +188,7 @@ class HsmTestCase(unittest.TestCase):
         sm = test_simplehsm.SimpleHSM()
         sm.do_terminate()
         sm.wait()
-        retval = sm.no_states
+        retval = len(sm.states)
         self.assertEqual(
                 retval,
                 expected, 

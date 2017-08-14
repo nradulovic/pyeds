@@ -264,22 +264,34 @@ State machine attributes and methods
 ------------------------------------
 
 Attributes:
- - ``self.name`` - this is a string containing Sstate machine name
- - ``self.logger`` - this is the logger which is used by state machine
- - ``self.rm`` - this is ResourceManager for this state machine
- - ``self.state`` - current state of this machine
+ - ``init_state_cls`` - Initial state class
+ - ``logger`` - Logger instance used by the state machine
+ - ``should_autostart`` - Should machine start at initialization
  
+Properties:
+ - ``depth`` - The depth of state machine states hierarchy
+ - ``states`` - List of names of registered states
+ - ``state`` - Current state instance
+ - ``name`` - String containing the state machine name
+
 Methods:
- - ``run(self)`` - this is state machine dispatch method
- - ``put(self, event)`` - this method puts an event to state machine wait
-   queue
- - ``terminate(self)`` - pend termination of the state machine. After 
-   exiting this method the state machine may still run. Use ``self.wait``
-   to wait for FSM termination
- - ``wait(self)`` - wait for FSM to terminate
- - ``instance_of`` - get the instance of a state class
- - ``on_terminate`` - gets called by state machine just before termination
- - ``on_exception`` - gets called when unhandled exception has occured
+ - ``instance_of(state_cls)`` - Get the instance of a state class
+ - ``event_loop()`` - Event loop
+ - ``send(event)`` - Send an event to the state machine
+ - ``wait()`` - Wait until the state machine terminates
+ - ``do_start()`` - Explicitly start the state machine
+ - ``do_terminate()`` - Pend termination of the state machine. After calling
+   this method the state machine may still run. Use ``wait()`` to wait for 
+   state machine until it terminates
+ - ``on_start()`` - Gets called by state machine just before the machine starts
+ - ``on_terminate()`` - Gets called by state machine just before the termination
+ - ``on_exception()`` - Gets called when unhandled exception has occured
+
+Arguments:
+ - ``queue_size`` - is an integer specifying what is the maximum event queue
+   size. When this argument is not given it defaults to 64.
+ - ``name`` - is a string specifying the state machine name. When this argument
+   is not given them the class name is taken as the state machine name.
  
 State transition
 ================
