@@ -6,32 +6,33 @@ Created on Jul 24, 2017
 
 import logging
 
-from src.pyeds import fsm
+from pyeds import fsm
 
 
 class SimpleFSM(fsm.StateMachine):
     logger = logging.getLogger()
-    
+
     def __init__(self):
         self.added_states = []
         self.out_seq = []
         super().__init__()
-        
-    
+
+
 class CommonStateClass(fsm.State):
     def __init__(self):
         super().__init__()
         self.sm.added_states += [self.name]
-        
+
     def on_init(self):
         self.sm.out_seq += ['{}:i'.format(self.name)]
-        
+
     def on_entry(self):
         self.sm.out_seq += ['{}:e'.format(self.name)]
-        
+
     def on_exit(self):
         self.sm.out_seq += ['{}:x'.format(self.name)]
-        
+
+
 @fsm.DeclareState(SimpleFSM)
 class StateA1(CommonStateClass):
     def on_a(self, event):

@@ -10,7 +10,7 @@ def read(file_name):
         text = f.read()
 
     return text
-    
+
 README = read('README.rst')
 NEWS = read('NEWS.txt')
 
@@ -34,7 +34,7 @@ setup(name='pyeds',
     url='https://github.com/nradulovic',
     license='LGPL',
     packages=find_packages('src'),
-    package_dir = {'': 'src'},include_package_data=True,
+    package_dir={'': 'src'}, include_package_data=True,
     zip_safe=False,
     install_requires=[
         # Currently no dependencies
