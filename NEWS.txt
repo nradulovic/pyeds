@@ -5,6 +5,8 @@ News
 
 0.7.6
 -----
+ 
+ * Code cleanups
 
 0.7.5
 -----
