@@ -4,6 +4,7 @@ Created on Jul 22, 2017
 @author: nenad
 '''
 
+
 class Immutable(object):
     def __setattr__(self, name, value):
         if hasattr(self, name):

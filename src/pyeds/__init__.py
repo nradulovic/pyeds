@@ -8,4 +8,3 @@ __version__ = '0.7.6'
 __author__ = 'Nenad Radulovic <nenad.b.radulovic@gmail.com>'
 
 from . import fsm
-

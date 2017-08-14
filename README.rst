@@ -145,11 +145,15 @@ Event
 
 An event is a notable occurrence at a particular point in time. Events can, but
 do not necessarily, cause state transitions from one state to another in state 
-machines
+machines.
 
 An event can have associated parameters, allowing the event to convey not only 
 the occurrence but also quantitative information about the occurrence. 
 
+An event is the only means of communication between state machines. Each event 
+carries name. Based on the event name a handler will be called from current 
+state class which has the same name.
+    
 An event in PyEDS is instanced using class ``Event``. 
 
 The associated parameters with an event are:

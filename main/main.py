@@ -7,9 +7,10 @@ import logging
 import unittest
 
 from src.pyeds import fsm
+import test_events
 import test_simplefsm
 import test_simplehsm
-import test_events
+
 
 logging.basicConfig(level=logging.ERROR)
 
