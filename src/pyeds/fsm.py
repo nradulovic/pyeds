@@ -6,6 +6,7 @@ Created on Jul 7, 2017
 
 __author__ = 'Nenad Radulovic <nenad.b.radulovic@gmail.com>'
 
+import re
 import logging
 
 from . import coordinator
@@ -123,11 +124,14 @@ class ResourceInstance(object):
     Arguments are:
     *name* is the name of the resource.
     '''
+
     def __init__(self, name=None):
-        # Try to setup the name of this resource instance
-        if not hasattr(self, 'name'):
-            self.name = name if name is not None else self.__class__.__name__
+        name = name if name is not None else self.__class__.__name__
+        self.define_name(name)
         self.producer = current_sm()
+
+    def define_name(self, name):
+        self.name = name
 
     def release(self):
         raise NotImplementedError(
@@ -140,7 +144,7 @@ class StateMachine(object):
 
     This class is a controller class of state machine.
 
-    If init_state_cls argument is given then that state will be initial state,
+    If init_state_cls attribute is set then that state will be initial state,
     otherwise, the first declared (registered) state is implicitly declared as
     initial state.
     '''
@@ -191,7 +195,7 @@ class StateMachine(object):
         # This loop will add all state classes to path manager
         for state_cls in self.state_clss:
             self.logger.info(
-                    '{} adding {}'.format(self.name, state_cls.__name__))
+                '{} adding {}'.format(self.name, state_cls.__name__))
             self._pm.add_cls(state_cls, state_cls.super_state)
         # Instantiate added state classes and build path
         self._pm.build()
@@ -207,11 +211,10 @@ class StateMachine(object):
             self._state = self._pm.instance_of(self.init_state_cls)
         except KeyError:
             raise LookupError(
-                    'init_state_cls argument \'{!r}\' '
-                    'is not a registered state'.format(self.init_state_cls))
+                'init_state_cls argument \'{!r}\' '
+                'is not a registered state'.format(self.init_state_cls))
         self.logger.info(
-                '{} {} is initial state'.format(
-                        self.name, self._state.name))
+            '{} {} is initial state'.format(self.name, self._state.name))
 
     def _exec_state(self, state, event):
         handler_name = '{}{}'.format(EVENT_HANDLER_PREFIX, event.name)
@@ -232,8 +235,8 @@ class StateMachine(object):
             new_state = self._pm.instance_of(new_state_cls)
         except KeyError:
             raise LookupError(
-                    'Target state \'{!r}\' '
-                    'is not a registered state'.format(new_state_cls))
+                'Target state \'{!r}\' is not a registered state'.format(
+                    new_state_cls))
         return (new_state, super_state)
 
     def _dispatch(self, event):
@@ -346,14 +349,14 @@ class StateMachine(object):
         self.rm.release_all()
 
     def on_exception(self, e, state, event, msg):
-        '''Gets called when unhandled exception has occured'''
+        '''Gets called when un-handled exception has occurred'''
         raise RuntimeError(
-                e,
-                msg,
-                self.__class__.__module__,
-                self.name,
-                state.name,
-                event.name)
+            e,
+            msg,
+            self.__class__.__module__,
+            self.name,
+            state.name,
+            event.name)
 
 
 class State(ResourceInstance):
@@ -394,14 +397,14 @@ class State(ResourceInstance):
         pass
 
     def on_unhandled_event(self, event):
-        '''Unhandled event handler
+        '''Un-handled event handler
 
         This handler gets executed in case the state does not handle the event.
 
         '''
         self.logger.debug(
-                '{} {}({}) wasn\'t handled'.
-                format(self.sm.name, self.name, event.name))
+            '{} {}({}) wasn\'t handled'.format(
+                self.sm.name, self.name, event.name))
 
 
 class DeclareState(object):
@@ -445,16 +448,10 @@ class Event(lib.Immutable, ResourceInstance):
     event carries name. Based on the event name a handler will be called from
     current state class which has the same name.
     '''
-    def __init__(self, name=None):
-        '''Using this constructor ensures that each event will be tagged with
-        additional information.
+    _ename_regex = re.compile('((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))')
 
-        Arguments are:
-
-        *name* is a string representing event name. When this argument is not
-        given then the class name is taken as the event name.
-        '''
-        super().__init__(name)
+    def define_name(self, name):
+        self.name = Event._ename_regex.sub(r'_\1', name).lower()
 
     def execute(self, handler):
         return handler(self)

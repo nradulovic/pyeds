@@ -182,7 +182,7 @@ derived class:
     new_event = MySpecialEvent() # This event is implicitly called 'my_special_event'
 
 In this case base ``Event`` class will implicitly take the name of the class as 
-own name. This can be overriden by calling the super constructor:
+own name. This can be overridden by calling the super constructor:
 
 .. code:: python
 
@@ -190,10 +190,6 @@ own name. This can be overriden by calling the super constructor:
     class MySecondEvent(fsm.Event):
         def __init__(self):
             super().__init__('my_special_event')
-
-    # Another way of creating event with same name as above events
-    class MyThirdEvent(fsm.Event):
-        name = 'my_special_event'
 
 Event class attributes and methods
 ----------------------------------
@@ -271,7 +267,8 @@ State machine attributes and methods
 Attributes:
  - ``init_state_cls`` - Initial state class
  - ``logger`` - Logger instance used by the state machine
- - ``should_autostart`` - Should machine start at initialization
+ - ``should_autostart`` - Should machine start at initialization. Default is 
+   True.
  
 Properties:
  - ``depth`` - The depth of state machine states hierarchy
@@ -290,14 +287,19 @@ Methods:
    state machine until it terminates
  - ``on_start()`` - Gets called by state machine just before the machine starts
  - ``on_terminate()`` - Gets called by state machine just before the termination
- - ``on_exception()`` - Gets called when unhandled exception has occured
+ - ``on_exception()`` - Gets called when un-handled exception has occurred.
 
 Arguments:
  - ``queue_size`` - is an integer specifying what is the maximum event queue
-   size. When this argument is not given it defaults to 64.
+   size. When this argument is not given it defaults to 64. If this argument is 
+   -1 then unlimited queue size will be used.
  - ``name`` - is a string specifying the state machine name. When this argument
    is not given them the class name is taken as the state machine name.
  
+If init_state_cls attribute is set then that state will be initial state,
+otherwise, the first declared (registered) state is implicitly declared as
+initial state.
+    
 State transition
 ================
 
