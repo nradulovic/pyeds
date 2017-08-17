@@ -3,7 +3,6 @@ Created on Jul 7, 2017
 
 @author: nenad
 '''
-import logging
 import unittest
 
 from pyeds import fsm
@@ -11,9 +10,6 @@ from pyeds import fsm
 import test_events
 import test_simplefsm
 import test_simplehsm
-
-
-logging.basicConfig(level=logging.ERROR)
 
 
 class EventTestCase(unittest.TestCase):
