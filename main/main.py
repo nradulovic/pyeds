@@ -21,7 +21,13 @@ class EventTestCase(unittest.TestCase):
         class MyEvent(fsm.Event):
             pass
         my_event = MyEvent()
-        self.assertEqual(MyEvent.__name__, my_event.name)
+        self.assertEqual('my_event', my_event.name)
+
+    def test_event_class_comlex_name(self):
+        class MyEventWITHComplexName(fsm.Event):
+            pass
+        my_event = MyEventWITHComplexName()
+        self.assertEqual('my_event_with_complex_name', my_event.name)
 
     def test_event_arg_name(self):
         name = 'my_name'
