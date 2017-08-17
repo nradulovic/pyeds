@@ -172,6 +172,16 @@ class StateMachine(object):
         the base class constructor (super().__init__) before doing anything
         else to the state machine.
         '''
+        # Ensure that state machine has state classes
+        if not hasattr(self, 'state_clss'):
+            raise AttributeError('{} has no states'.format(self.name))
+        # If an explicit initialization state is given then ensure that
+        # init_state is a registered state
+        if self.init_state_cls is not None:
+            if self.init_state_cls not in self.state_clss:
+                raise LookupError(
+                    'init_state_cls argument \'{!r}\' '
+                    'is not a registered state'.format(self.init_state_cls))
         self._name = name if name is not None else self.__class__.__name__
         self._queue = coordinator.Queue(queue_size)
         self._pm = _PathManager()
@@ -180,6 +190,8 @@ class StateMachine(object):
                 name=self.name)
         self._thread.sm = self
         self.rm = ResourceManager()
+        if self.init_state_cls is None:
+            self.init_state_cls = self.state_clss[0]
         if self.should_autostart:
             self._thread.start()
 
@@ -187,34 +199,22 @@ class StateMachine(object):
         class Signal(Event):
             def execute(self, handler):
                 return handler()
+        # This will make the producer of these signals this state machine
         self._ENTRY = Signal(ENTRY_SIGNAL)
         self._EXIT = Signal(EXIT_SIGNAL)
         self._INIT = Signal(INIT_SIGNAL)
-        if not hasattr(self, 'state_clss'):
-            raise AttributeError('{} has no states'.format(self.name))
-        # This loop will add all state classes to path manager
         for state_cls in self.state_clss:
-            self.logger.info(
-                '{} adding {}'.format(self.name, state_cls.__name__))
             self._pm.add_cls(state_cls, state_cls.super_state)
-        # Instantiate added state classes and build path
         self._pm.build()
-        self.logger.info(
-            '{} hierarchy is {} level(s) deep, {} state(s)'.format(
-                self.name, self._pm.depth, len(self._pm.states())))
-        # If we were called without initial state argument then implicitly set
-        # the first declared state as initialization state.
-        if self.init_state_cls is None:
-            self.init_state_cls = self.state_clss[0]
-        # Also check if init_state_cls is endeed a State class
-        try:
-            self._state = self._pm.instance_of(self.init_state_cls)
-        except KeyError:
-            raise LookupError(
-                'init_state_cls argument \'{!r}\' '
-                'is not a registered state'.format(self.init_state_cls))
-        self.logger.info(
-            '{} {} is initial state'.format(self.name, self._state.name))
+        # Set the state to initial state
+        self._state = self._pm.instance_of(self.init_state_cls)
+        # Log info about state machine
+        self.logger.debug('{} registered states {}'.format(
+            self.name, self.states))
+        self.logger.debug('{} hierarchy: {} level(s) deep, {} state(s)'.format(
+            self.name, self._pm.depth, len(self._pm.states())))
+        self.logger.info('{} {} is initial state'.format(
+            self.name, self._state.name))
 
     def _exec_state(self, state, event):
         handler_name = '{}{}'.format(EVENT_HANDLER_PREFIX, event.name)
@@ -240,6 +240,8 @@ class StateMachine(object):
         return (new_state, super_state)
 
     def _dispatch(self, event):
+        self.logger.debug('{} {}({})'.format(
+            self.name, self._state.name, event.name))
         current_state = self._state
         self._pm.reset()
         # Loop until we find a state that will handle the event
@@ -252,9 +254,8 @@ class StateMachine(object):
                 break
         # Loop while new transitions are needed
         while new_state is not None:
-            self.logger.debug(
-                '{} {} -> {}'.format(
-                    self.name, current_state.name, new_state.name))
+            self.logger.debug('{} {} -> {}'.format(
+                self.name, current_state.name, new_state.name))
             self._pm.generate(current_state, new_state)
             # Exit the path
             for exit_state in self._pm.exit_iterator():
@@ -265,8 +266,7 @@ class StateMachine(object):
                 self._exec_state(enter_state, self._ENTRY)
             self._pm.reset()
             current_state = new_state
-            new_state, super_state = self._exec_state(
-                current_state, self._INIT)
+            new_state, _ = self._exec_state(current_state, self._INIT)
             self._state = current_state
         event.release()
 
@@ -297,9 +297,8 @@ class StateMachine(object):
     def event_loop(self):
         '''Event loop
         '''
-        # Initialize states and build hierarchy
+        # Initialize the states and build hierarchy
         self._setup_fsm()
-        # Initialize the state machine
         self._dispatch(self._INIT)
         self.on_start()
         # Execute event loop
@@ -311,8 +310,6 @@ class StateMachine(object):
                 self.on_terminate()
                 self.logger.info('{} terminated'.format(self.name))
                 return
-            self.logger.debug(
-                '{} {}({})'.format(self.name, self._state.name, event.name))
             self._dispatch(event)
             self._queue.task_done()
 
