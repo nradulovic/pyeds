@@ -1,5 +1,13 @@
 '''
 Finite State Machine (FSM)
+==========================
+
+A finite-state machine (FSM) is a mathematical model of computation. It is an
+abstract machine that can be in exactly one of a finite number of states at any
+given time. The FSM can change from one state to another in response to some
+external events; the change from one state to another is called a state
+transition. An FSM is defined by a list of its states, its initial state, and
+the conditions for each transition.
 
 Created on Jul 7, 2017
 '''
@@ -144,34 +152,32 @@ class StateMachine(object):
 
     This class is a controller class of state machine.
 
-    If init_state_cls attribute is set then that state will be initial state,
-    otherwise, the first declared (registered) state is implicitly declared as
-    initial state.
+    Args:
+        * queue_size (:obj:`int`, *optional*): Is an integer specifying what is
+          the maximum event queue size. If this argument is -1 then unlimited
+          queue size will be used. Default is 64.
+        * name (:obj:`str`, *optional*): Is a string specifying the state
+          machine name. The default value is ``None`` which means that the
+          class name is taken as the state machine name.
+
+    Attributes:
+        * init_state_cls (:obj:`State`, *optional*): Initial state class. If
+          init_state_cls attribute is set then that state will be initial
+          state. Default is ``None`` which means the first declared
+          (registered) state is declared as initial state.
+        * logger (:obj:`Logger`, *optional*): Logger instance used by the state
+          machine. Default is to use ``logging.getLogger(None)``.
+        * should_autostart (:obj:`bool`, *optional*): Should machine start at
+          initialization? Default is ``True``.
+
+    Note:
+        The subclass must call the constructor method.
     '''
     init_state_cls = None
-    '''Initial state class'''
     logger = logging.getLogger(None)
-    '''Logger instance used by the state machine'''
     should_autostart = True
-    '''Should machine start at initialization'''
 
     def __init__(self, queue_size=64, name=None):
-        '''This constructor should always be called with keyword arguments.
-
-        Arguments are:
-
-        *queue_size* is an integer specifying what is the maximum event queue
-        size. When this argument is not given it defaults to 64. If this
-        argument is -1 then unlimited queue size will be used.
-
-        *name* is a string specifying the state machine name. When this
-        argument is not given then the class name is taken as the state machine
-        name.
-
-        If a subclass overrides the constructor, it must make sure to invoke
-        the base class constructor (super().__init__) before doing anything
-        else to the state machine.
-        '''
         # Ensure that state machine has state classes
         if not hasattr(self, 'state_clss'):
             raise AttributeError('{} has no states'.format(self.name))
@@ -272,22 +278,38 @@ class StateMachine(object):
 
     @property
     def depth(self):
-        '''The depth of state machine states hierarchy'''
+        '''The depth of state machine states hierarchy
+
+        Returns:
+            * int: Hierarchy depth
+        '''
         return self._pm.depth
 
     @property
     def states(self):
-        '''List of names of registered states'''
+        '''List of names of registered states
+
+        Returns:
+            * list of :obj:`str`: List of names of registered states
+        '''
         return self._pm.states()
 
     @property
     def state(self):
-        '''Current state instance'''
+        '''Current state instance
+
+        Returns:
+            * :obj:`State`: Instance of current state
+        '''
         return self._state
 
     @property
     def name(self):
-        '''String containing the state machine name'''
+        '''String containing the state machine name
+
+        Returns:
+            * :obj:`str`: State machine name
+        '''
         return self._name
 
     def instance_of(self, state_cls):
@@ -314,15 +336,34 @@ class StateMachine(object):
             self._queue.task_done()
 
     def send(self, event, block=True, timeout=None):
-        '''Send an event to the state machine
+        '''Send an event to the state machine.
 
         The event is put to state machine queue and then the event_loop()
         method will process the queued event.
+
+        Args:
+            * event (:obj:`Event`): Event object to send to this machine.
+            * block (:obj:`bool`, *optional*): If event queue is full should
+              this method block? Default is ``True`` which means the method
+              will block.
+            * timeout (:obj:`float`, *optional*): If *block* is ``True`` then
+              wait up to *timeout* seconds. This argument is disregarded when
+              *block* is ``False``. Default is ``None`` which means to block
+              indefinitely.
+
+        Raises:
+            * BufferError: Raised when queue buffer is full and timeout has
+              passed (if given), otherwise, it raises it immediately when full.
         '''
         self._queue.put(event, block, timeout)
 
     def wait(self, timeout=None):
-        '''Wait until the state machine terminates'''
+        '''Wait until the state machine terminates.
+
+        Args:
+            * timeout (:obj:`int`, optional): How many seconds to wait for
+              termination.
+        '''
         self._thread.join(timeout)
 
     def do_start(self):
@@ -332,8 +373,21 @@ class StateMachine(object):
     def do_terminate(self, timeout=None):
         '''Pend termination of the state machine.
 
-        After calling this method the state machine may still run. Use
-        ``wait()`` to wait for state machine until it terminates.
+        Put a special event into to queue buffer which will signal the state
+        machine to terminate.
+
+        Args:
+            * timeout (:obj:`float`, *optional*): When specified it will wait
+              up to *timeout* seconds. Default is ``None`` which means to block
+              indefinitely.
+
+        Raises:
+            * BufferError: Raised when queue buffer is full and timeout has
+              passed (if given), otherwise, it raises it immediately when full.
+
+        Note:
+            After calling this method the state machine may still run. Use
+            ``wait()`` to wait for state machine until it terminates.
         '''
         self._queue.put(None, timeout=timeout)
 
@@ -409,6 +463,8 @@ class DeclareState(object):
 
     Use this decorator class to bind states to a state machine.
 
+    Args:
+        * state_machine_cls (:class:`State`): A state class
     '''
     def __init__(self, state_machine_cls):
         assert state_machine_cls is not StateMachine, \
@@ -499,10 +555,20 @@ class After(ResourceInstance):
 
 class Every(After):
     '''Put an event to current state machine every time a specified number of
-    seconds passes
+    seconds passes.
 
-    Example usage:
+    Args:
+        * every (:obj:`float`): Time period in seconds.
+        * event_name (:obj:`str`): Name of event.
+        * is_local (:obj:`bool`, *optional*): creates the time object which is
+          local to calling state. Default is ``False`` which means non local.
+
+    Example:
+        In order to send the event called 'blink' to itself every 10 seconds
+        do::
+
             fsm.Every(10.0, 'blink')
+
     '''
     def __init__(self, every, event_name, is_local=False):
         super().__init__(every, event_name, is_local=is_local)

@@ -18,7 +18,11 @@ class Timer(threading.Timer):
 
 
 class Queue(queue.Queue):
-    pass
+    def put(self, item, block=False, timeout=None):
+        try:
+            super().put(item, block, timeout)
+        except queue.Full:
+            raise BufferError
 
 
 def current_thread():

@@ -1,6 +1,11 @@
 '''
 Created on Jul 22, 2017
 
+Generic library
+===============
+
+This module contains definitions for generic usage.
+
 @author: nenad
 '''
 

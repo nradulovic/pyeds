@@ -7,9 +7,9 @@
 Introduction
 ============
 
-This package provides a system allows to efficiently write finite state machines 
-(FSM) by hand. The focus was to make the API as simplest as possible since no 
-GUI tools are included to define a FSM.
+This package provides a means to efficiently write finite state machines (FSM) 
+by hand. The focus was to make the API as simplest as possible since no GUI 
+tools are included to define a FSM.
 
 Installation
 ============
@@ -260,6 +260,13 @@ Methods:
    
 State machine
 =============
+
+A finite-state machine (FSM) is a mathematical model of computation. It is an 
+abstract machine that can be in exactly one of a finite number of states at any
+given time. The FSM can change from one state to another in response to some
+external events; the change from one state to another is called a state
+transition. An FSM is defined by a list of its states, its initial state, and
+the conditions for each transition.
 
 State machine attributes and methods
 ------------------------------------
