@@ -554,8 +554,18 @@ class State(ResourceInstance):
     Where *on_event_name* corresponds to event name. Event handler gets the
     event (:obj:`Event`) which has caused this call.
 
+    Transitions are started by returning target state class in an event
+    handler::
+
+        def on_some_event(self, event):
+            do_some_stuff()
+            return SomeOtherState # Note: return a class object,
+                                  # not instance object
+
     Attributes:
-        * super_state (:class:`State`): The super state of this state.
+        * super_state (:class:`State`): The super state of this state. By
+          default is set to ``None`` which means that this state has no super
+          state.
     '''
     super_state = None
 
