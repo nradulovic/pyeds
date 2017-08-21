@@ -49,6 +49,8 @@ from . import coordinator
 from . import lib
 
 
+__state_machines = {}
+
 EVENT_HANDLER_PREFIX = 'on_'
 '''This is default event handler prefix.
 
@@ -309,6 +311,9 @@ class StateMachine(object):
         self._pm.build()
         # Set the state to initial state
         self._state = self._pm.instance_of(self.init_state_cls)
+        # Add itself to global list
+        global __state_machines
+        __state_machines[self.name] = self
         # Log info about state machine
         self.logger.debug('{} registered states {}'.format(
             self.name, self.states))
@@ -755,6 +760,34 @@ class Event(lib.Immutable, ResourceInstance):
         '''
         pass
 
+    def send(self, state_machine=None):
+        '''Send this event to state machine.
+
+        Args:
+            * state_machine (:obj:`None`): Send the event to the state machine
+              who created this event. This argument is invalid in case when the
+              producer of event is not a state machine.
+            * state_machine (:obj:`StateMachine`): State machine object
+            * state_machine (:obj:`str`): State machine name
+            * state_machine (:obj:`Channel`): Event channel
+
+        Raises:
+            * ValueError: When state_machine argument is not supported.
+            * LookupError: When state_machine argument is :obj:`str` and there
+              is no state machine with that name.
+        '''
+        if state_machine is None:
+            self.producer.send(self)
+        elif isinstance(state_machine, StateMachine):
+            state_machine.send(self)
+        elif isinstance(state_machine, str):
+            state_machine = find_by_name(state_machine)
+            state_machine.send(self)
+        else:
+            raise ValueError(
+                'state_machine type {!r} is not supported'.format(
+                    state_machine))
+
 
 class After(ResourceInstance):
     '''Send an event to current state machine after a specified number of
@@ -852,3 +885,21 @@ def current():
         return current.sm
     except AttributeError:
         pass
+
+
+def find_by_name(name):
+    '''Find a state machine by name
+
+    Args:
+        * name (:obj:`str`): Name of state machine.
+
+    Returns:
+        :obj:`StateMachine`: Instance of found state machine
+
+    Raises:
+        * LookupError: When a machine with *name* is not found.
+    '''
+    try:
+        return __state_machines[name]
+    except KeyError:
+        raise LookupError('Found no state machine with \'{}\''.format(name))
