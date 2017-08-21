@@ -301,7 +301,7 @@ class StateMachine(object):
             def execute(self, handler):
                 return handler()
         # This will make the producer of these signals this state machine
-        self._ENTRY = Signal('enter')
+        self._ENTRY = Signal('entry')
         self._EXIT = Signal('exit')
         self._INIT = Signal('init')
         for state_cls in self.state_clss:
