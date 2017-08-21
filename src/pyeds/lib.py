@@ -1,16 +1,27 @@
 '''
-Created on Jul 22, 2017
-
 Generic library
 ===============
 
 This module contains definitions for generic usage.
 
-@author: nenad
+Module details
+--------------
+
+Created on Jul 22, 2017
 '''
+
+__author__ = 'Nenad Radulovic <nenad.b.radulovic@gmail.com>'
 
 
 class Immutable(object):
+    '''Immutable object
+
+    An immutable object (unchangeable object) is an object whose state cannot
+    be modified after it is created.
+
+    When trying to modify an attribute that is already set the
+    ``AttributeError``  will be raised.
+    '''
     def __setattr__(self, name, value):
         if hasattr(self, name):
             raise AttributeError(

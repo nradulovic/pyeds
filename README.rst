@@ -179,7 +179,8 @@ derived class:
     class MySpecialEvent(fsm.Event):
         pass
         
-    new_event = MySpecialEvent() # This event is implicitly called 'my_special_event'
+    new_event = MySpecialEvent() # This event is implicitly
+                                 # called 'my_special_event'
 
 In this case base ``Event`` class will implicitly take the name of the class as 
 own name. This can be overridden by calling the super constructor:
@@ -187,7 +188,7 @@ own name. This can be overridden by calling the super constructor:
 .. code:: python
 
     # This event has the exact same name as the above one
-    class MySecondEvent(fsm.Event):
+    class DerivedEvent(fsm.Event):
         def __init__(self):
             super().__init__('my_special_event')
 
@@ -304,8 +305,7 @@ Arguments:
    is not given them the class name is taken as the state machine name.
  
 If init_state_cls attribute is set then that state will be initial state,
-otherwise, the first declared (registered) state is implicitly declared as
-initial state.
+otherwise, the first declared (registered) state is initial state.
     
 State transition
 ================

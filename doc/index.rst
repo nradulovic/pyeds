@@ -19,8 +19,9 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-PyEDS
-=====
+Source
+======
+
 .. automodule:: pyeds
    :members:
 
@@ -33,3 +34,5 @@ PyEDS
 .. automodule:: pyeds.coordinator
    :members:
 
+.. automodule:: pyeds.thread_coordinator
+   :members:

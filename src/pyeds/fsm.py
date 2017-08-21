@@ -1,6 +1,6 @@
 '''
 Finite State Machine (FSM)
-==========================
+--------------------------
 
 A finite-state machine (FSM) is a mathematical model of computation. It is an
 abstract machine that can be in exactly one of a finite number of states at any
@@ -8,6 +8,34 @@ given time. The FSM can change from one state to another in response to some
 external events; the change from one state to another is called a state
 transition. An FSM is defined by a list of its states, its initial state, and
 the conditions for each transition.
+
+Event
+-----
+
+An event is a notable occurrence at a particular point in time. Events can, but
+do not necessarily, cause state transitions from one state to another in state
+machines.
+
+An event can have associated parameters, allowing the event to convey not only
+the occurrence but also quantitative information about the occurrence.
+
+An event in PyEDS is instanced using class :obj:`Event`.
+
+State
+-----
+
+A state is a description of the status of a system that is waiting to execute
+a transition.
+
+State transition
+----------------
+
+Switching from one state to another is called state transition. A transition is
+a set of actions to be executed when a condition is fulfilled or when an event
+is received.
+
+Module details
+--------------
 
 Created on Jul 7, 2017
 '''
@@ -103,24 +131,63 @@ class _PathManager(object):
 
 
 class ResourceManager(object):
+    '''Resource manager
+
+    This class has the responsibility to keep a list of resource instances (see
+    :obj:`ResourceInstance`).
+    '''
     def __init__(self):
         self._resources = {}
 
-    def put(self, resource_instance):
+    def register(self, resource_instance):
+        '''Register a resource instance
+
+        Args:
+            * resource_instance (:obj:`ResourceInstance`): Resource instance to
+              be added.
+        '''
         self._resources[resource_instance.name] = resource_instance
 
+    def unregister(self, resource_instance):
+        '''Remove a resource instance
+
+        Args:
+            * resource_instance (:obj:`ResourceInstance`): Resource instance to
+              be removed.
+
+        Raises:
+            * LookupError: When *resource_instance* to be removed is not
+              registered.
+        '''
+        resource_name = resource_instance.name
+        try:
+            del self._resources[resource_name]
+        except KeyError:
+            raise LookupError('Resource {} is not registered'.format(
+                resource_name))
+
     def get(self, resource_name):
-        return self._resources[resource_name]
+        '''Get a resource instance by name
 
-    def remove(self, resource_name):
-        del self._resources[resource_name]
+        Args:
+            * resource_name (:obj:`str`): A name of a resource to get.
 
-    def pop(self, resource_name):
-        resource = self.get(resource_name)
-        self.remove(resource_name)
-        return resource
+        Returns:
+            :obj:`ResourceInstance`: Resource instance.
+
+        Raises:
+            * LookupError: When a resource with *resource_name* is not
+              registered.
+        '''
+        try:
+            return self._resources[resource_name]
+        except KeyError:
+            raise LookupError('Resource {} is not registered'.format(
+                resource_name))
 
     def release_all(self):
+        '''Call the release method in all registered resources
+        '''
         for resource in self._resources.values():
             resource.release()
         self._resources = {}
@@ -129,19 +196,41 @@ class ResourceManager(object):
 class ResourceInstance(object):
     '''ResourceInstance which is associated with current state machine
 
-    Arguments are:
-    *name* is the name of the resource.
+    Args:
+        * name (:obj:`str`): Is the name of the resource.
     '''
 
     def __init__(self, name=None):
         name = name if name is not None else self.__class__.__name__
-        self.define_name(name)
-        self.producer = current_sm()
+        self.name = self.format_name(name)
+        self.producer = current()
 
-    def define_name(self, name):
-        self.name = name
+    def format_name(self, name):
+        '''Abstract method, format the name of the resource.
+
+        Args:
+            * name (:obj:`str`): Unformatted resource name as defined in the
+              constructor.
+
+        Returns:
+            * :obj:`str`: Formatted name of the resource which will be used as
+              final name of the resource.
+
+        Note:
+            * This method must be implemented by derived class.
+        '''
+        raise NotImplementedError(
+            'Abstract method \'format_name\' in class \'{}\'.'.format(
+                self.__class__.__name__))
 
     def release(self):
+        '''Abstract method, release of the resource.
+
+        Called when someone wants to release (terminate) the resource.
+
+        Note:
+            * This method must be implemented by derived class.
+        '''
         raise NotImplementedError(
             'Abstract method \'release\' in class \'{}\'.'.format(
                 self.__class__.__name__))
@@ -151,6 +240,17 @@ class StateMachine(object):
     '''This class implements a state machine.
 
     This class is a controller class of state machine.
+
+    State machine instance is the entry point of a state machine which is used
+    to receive events and do the transitions between states. Each state machine
+    must declare it's own subclass of :class:`StateMachine`. The simplest way
+    is to just declare an empty class which inherits the class
+    :class:`StateMachine`::
+
+        from pyeds import fsm
+
+        class MyFsm(fsm.StateMachine):
+            pass
 
     Args:
         * queue_size (:obj:`int`, *optional*): Is an integer specifying what is
@@ -162,9 +262,9 @@ class StateMachine(object):
 
     Attributes:
         * init_state_cls (:obj:`State`, *optional*): Initial state class. If
-          init_state_cls attribute is set then that state will be initial
+          *init_state_cls* attribute is set then that state will be initial
           state. Default is ``None`` which means the first declared
-          (registered) state is declared as initial state.
+          (registered) state is initial state.
         * logger (:obj:`Logger`, *optional*): Logger instance used by the state
           machine. Default is to use ``logging.getLogger(None)``.
         * should_autostart (:obj:`bool`, *optional*): Should machine start at
@@ -189,11 +289,9 @@ class StateMachine(object):
                     'init_state_cls argument \'{!r}\' '
                     'is not a registered state'.format(self.init_state_cls))
         self._name = name if name is not None else self.__class__.__name__
-        self._queue = coordinator.Queue(queue_size)
+        self._queue = coordinator.provider.Queue(queue_size)
         self._pm = _PathManager()
-        self._thread = coordinator.Thread(
-                target=self.event_loop,
-                name=self.name)
+        self._thread = coordinator.provider.Task(self.event_loop, self.name)
         self._thread.sm = self
         self.rm = ResourceManager()
         if self.init_state_cls is None:
@@ -237,12 +335,7 @@ class StateMachine(object):
                 self.on_exception(e, state, event, 'State exception')
                 # This state has caused an error, no transitions will be done
                 new_state_cls = None
-        try:
-            new_state = self._pm.instance_of(new_state_cls)
-        except KeyError:
-            raise LookupError(
-                'Target state \'{!r}\' is not a registered state'.format(
-                    new_state_cls))
+        new_state = self._pm.instance_of(new_state_cls)
         return (new_state, super_state)
 
     def _dispatch(self, event):
@@ -290,7 +383,7 @@ class StateMachine(object):
         '''List of names of registered states
 
         Returns:
-            * list of :obj:`str`: List of names of registered states
+            * :obj:`list` of :obj:`str`: List of names of registered states
         '''
         return self._pm.states()
 
@@ -313,11 +406,31 @@ class StateMachine(object):
         return self._name
 
     def instance_of(self, state_cls):
-        '''Get the instance of state class'''
-        return self._pm.instance_of(state_cls)
+        '''Get the instance of state class
+
+        Args:
+            * state_cls (:class:`State`): State class
+
+        Returns:
+            :obj:`State`: Instance of *state_cls* class.
+
+        Raises:
+            * LookupError: If *state_cls* is not a registered state of the
+              state machine.
+        '''
+        try:
+            return self._pm.instance_of(state_cls)
+        except KeyError:
+            raise LookupError(
+                'State \'{!r}\' is not a registered state'.format(state_cls))
 
     def event_loop(self):
         '''Event loop
+
+        This method executes the event looper.
+
+        Raises:
+            * LookupError: If a state returns invalid transition class.
         '''
         # Initialize the states and build hierarchy
         self._setup_fsm()
@@ -361,13 +474,18 @@ class StateMachine(object):
         '''Wait until the state machine terminates.
 
         Args:
-            * timeout (:obj:`int`, optional): How many seconds to wait for
+            * timeout (:obj:`float`, *optional*): How many seconds to wait for
               termination.
         '''
         self._thread.join(timeout)
 
     def do_start(self):
-        '''Explicitly start the state machine'''
+        '''Explicitly start the state machine
+
+        If attribute *should_autostart* is ``False`` then after the creating
+        the class the state machine will start executing only after calling
+        this function.
+        '''
         self._thread.start()
 
     def do_terminate(self, timeout=None):
@@ -399,10 +517,18 @@ class StateMachine(object):
         '''Gets called by state machine just before the termination'''
         self.rm.release_all()
 
-    def on_exception(self, e, state, event, msg):
-        '''Gets called when un-handled exception has occurred'''
+    def on_exception(self, exc, state, event, msg):
+        '''Gets called when un-handled state exception has occurred
+
+        Args:
+            * exc (:obj:`Exception`): Holds state exception.
+            * state (:obj:`State`): State instance where the exception
+              originates.
+            * event (:obj:`Event`): Event which was processed in the state.
+            * msg (:obj:`str`): Message associated with the exception.
+        '''
         raise RuntimeError(
-            e,
+            exc,
             msg,
             self.__class__.__module__,
             self.name,
@@ -413,9 +539,26 @@ class StateMachine(object):
 class State(ResourceInstance):
     '''This class implements a state.
 
-    Each state is represented by a class. Every method of this class processes
-    different events.
+    Each state is represented by a class derived from this class. Every method
+    in state class may handle one particular event. To declare the state, a
+    class must be decorated with :obj:`DeclareState` decorator which requires
+    a subclass of :obj:`StateMachine` as an argument. This decorator binds the
+    state class to the specific FSM class. Also, the new state class must be a
+    subclass of :obj:`State` class::
 
+        @fsm.DeclareState(MyFsm)
+        class MyState(fsm.State):
+            pass
+
+    Event handler has the following signature::
+
+        def on_event_name(self, event):
+
+    Where *on_event_name* corresponds to event name. Event handler gets the
+    event (:obj:`Event`) which has caused this call.
+
+    Attributes:
+        * super_state (:class:`State`): The super state of this state.
     '''
     super_state = None
 
@@ -423,38 +566,78 @@ class State(ResourceInstance):
         # Setup resource instance
         super(State, self).__init__()
         # Add self to SM (producer) ResourceManager
-        self.producer.rm.put(self)
+        self.producer.rm.register(self)
         # Setup resource manager
         self.rm = ResourceManager()
 
     @property
     def sm(self):
+        '''Returns the state machine
+        '''
         return self.producer
 
     @property
     def logger(self):
+        '''Returns the logger of state machine
+        '''
         return self.producer.logger
 
+    def format_name(self, name):
+        '''Resource, format the state name.
+        '''
+        return name
+
     def release(self):
+        '''Release this resource.
+
+        This method is called when state machine dispatcher wants to recycle
+        the state (during termination).
+        '''
         pass
 
     def on_entry(self):
+        '''State "entry" event handler
+
+        This handler gets called by dispatcher when state machine enters this
+        state.
+
+        Note:
+            This event handler does not have event argument.
+        '''
         pass
 
     def on_exit(self):
+        '''State "exit" event handler
+
+        This handler gets called by dispatcher when state machine exits this
+        state.
+
+        Note:
+            This event handler does not have event argument.
+        '''
         pass
 
     def on_init(self):
+        '''State "initialization" event handler
+
+        This handler gets called by dispatcher when state machine enters this
+        state and wants to initialize it.
+
+        Note:
+            This event handler does not have event argument.
+        '''
         pass
 
     def on_unhandled_event(self, event):
         '''Un-handled event handler
 
         This handler gets executed in case the state does not handle the event.
+        By default this handler only logs the un-handled event.
 
+        Args:
+            * event (:obj:`Event`): Event which is not handled.
         '''
-        self.logger.debug(
-            '{} {}({}) wasn\'t handled'.format(
+        self.logger.debug('{} {}({}) wasn\'t handled'.format(
                 self.sm.name, self.name, event.name))
 
 
@@ -464,7 +647,15 @@ class DeclareState(object):
     Use this decorator class to bind states to a state machine.
 
     Args:
-        * state_machine_cls (:class:`State`): A state class
+        * state_machine_cls (:class:`StateMachine`): A subclass of
+          :class:`StateMachine` class
+
+    Raises:
+        * AssertError:
+            - When *state_machine_cls* is class :class:`StateMachine`
+            - When *state_machine_cls* is not a subclass of
+              :class:`StateMachine`
+            - When decorated class is not a subclass of :class:`State`
     '''
     def __init__(self, state_machine_cls):
         assert state_machine_cls is not StateMachine, \
@@ -490,33 +681,93 @@ class DeclareState(object):
 class Event(lib.Immutable, ResourceInstance):
     '''Event
 
-    An event is a notable occurrence at a particular point in time. Events can,
-    but do not necessarily, cause state transitions from one state to another
-    in state machines.
-
-    An event can have associated parameters, allowing the event to convey not
-    only the occurrence but also quantitative information about the occurrence.
-
     An event is the only means of communication between state machines. Each
     event carries name. Based on the event name a handler will be called from
     current state class which has the same name.
+
+    When an event is created and sent to a state machine it's name is used to
+    decide which method in current state instance should be invoked. The state
+    machine takes the name of the event, it prepends text ``on_`` to the name
+    string and then it looks up to event handler method.
+
+    Example:
+        If an event named ``toggle`` is created and sent to a state machine,
+        the target state machine will lookup for a method named ``on_toggle``
+        in the current state instance.
+
+    Since the event name directly impacts which state instance method will be
+    called the name of events must follow the Python identifier naming rules.
+
+    The associated parameters with an event are:
+        * name of the event: as given to constructor or implicitly defined
+          using class name.
+        * producer of event: state machine which generated this event or
+          ``None`` if the event was generated outside a state machine context.
+
+    Args:
+        * name (:obj:`str`, *optional*): Name of the event. When not given the
+          event will take the name of the derived Event class and convert it to
+          appropriate format.
     '''
     _ename_regex = re.compile('((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))')
 
-    def define_name(self, name):
-        self.name = Event._ename_regex.sub(r'_\1', name).lower()
+    def format_name(self, name):
+        '''Resource, format the name.
+
+        Used by resource instance to format the name of Event. It will convert
+        Event names from `CamelCase` to `camel_case` format.
+
+        Example::
+
+            class MySpecialEvent(fsm.Event):
+                pass
+
+            new_event = MySpecialEvent() # This event is implicitly
+                                         # called 'my_special_event'
+
+        Args:
+            * name (:obj:`str`): Unformatted name of the Event.
+
+        Returns:
+            :obj:`str`: Formatted name of the Event.
+        '''
+        return self._ename_regex.sub(r'_\1', name).lower()
 
     def execute(self, handler):
+        '''Event handler executor
+
+        This method is called by state machine dispatcher to execute event
+        handler in a state.
+
+        By default it just delivers itself to event handler::
+
+            return handler(self)
+        '''
         return handler(self)
 
     def release(self):
+        '''Release this resource.
+
+        This method is called when state machine dispatcher wants to recycle
+        the event.
+        '''
         pass
 
 
 class After(ResourceInstance):
-    '''Put an event to current state machine after a specified number of seconds
+    '''Send an event to current state machine after a specified number of
+    seconds
 
-    Example usage:
+    Args:
+        * every (:obj:`float`): Time period in seconds.
+        * event_name (:obj:`str`): Name of event.
+        * is_local (:obj:`bool`, *optional*): creates the time object which is
+          local to calling state. Default is ``False`` which means non local.
+
+    Example:
+        In order to send the event called 'blink' to itself after 10 seconds
+        do::
+
             fsm.After(10.0, 'blink')
     '''
     def __init__(self, after, event_name, is_local=False):
@@ -525,26 +776,33 @@ class After(ResourceInstance):
         super(After, self).__init__(name=name)
         # Add your self to state or state machine resource manager
         if is_local:
-            self.producer.state.rm.put(self)
+            self.producer.state.rm.register(self)
         else:
-            self.producer.rm.put(self)
+            self.producer.rm.register(self)
         # Save arguments
         self.timeo = after
         self.event_name = event_name
         self.start()
 
-    def start(self):
-        self._timer = coordinator.Timer(self.timeo, self.callback)
-        self._timer.start()
-
-    def callback(self, *args, **kwargs):
-        '''Callback method which is called after/every timeout
-
-        *args* contains event object
+    def handler(self):
+        '''Timeout handler
         '''
         self.producer.send(Event(self.event_name))
 
+    def start(self):
+        '''Start the timer.
+
+        Use this method to start a cancelled timer or a timer that has expired.
+        '''
+        self._timer = coordinator.provider.Timer(self.timeo, self.handler)
+        self._timer.start()
+
     def release(self):
+        '''Release this resource.
+
+        This method is called when state machine dispatcher wants to recycle
+        the timer.
+        '''
         self._timer.cancel()
 
     def cancel(self):
@@ -554,7 +812,7 @@ class After(ResourceInstance):
 
 
 class Every(After):
-    '''Put an event to current state machine every time a specified number of
+    '''Send an event to current state machine every time a specified number of
     seconds passes.
 
     Args:
@@ -568,19 +826,27 @@ class Every(After):
         do::
 
             fsm.Every(10.0, 'blink')
-
     '''
     def __init__(self, every, event_name, is_local=False):
         super().__init__(every, event_name, is_local=is_local)
 
-    def callback(self, *args, **kwargs):
-        super().callback(*args, **kwargs)
+    def handler(self):
+        '''Timeout handler
+        '''
+        super().handler()
         self.start()
 
 
-def current_sm():
-    current = coordinator.current_thread()
+def current():
+    '''Returns the currently executing state machine.
+
+    Returns:
+        * :obj:`StateMachine`: Which state machine is currently executing.
+        * :obj:`None`: When this function is called outside of a state machine
+          code context.
+    '''
+    current = coordinator.provider.current()
     try:
         return current.sm
     except AttributeError:
-        return None
+        pass
