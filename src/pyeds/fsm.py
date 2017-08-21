@@ -50,9 +50,11 @@ from . import lib
 
 
 EVENT_HANDLER_PREFIX = 'on_'
-ENTRY_SIGNAL = 'entry'
-EXIT_SIGNAL = 'exit'
-INIT_SIGNAL = 'init'
+'''This is default event handler prefix.
+
+This string is prefixed with event name to form event handler name which will
+be called to process the event.
+'''
 
 
 class _PathManager(object):
@@ -215,13 +217,8 @@ class ResourceInstance(object):
         Returns:
             * :obj:`str`: Formatted name of the resource which will be used as
               final name of the resource.
-
-        Note:
-            * This method must be implemented by derived class.
         '''
-        raise NotImplementedError(
-            'Abstract method \'format_name\' in class \'{}\'.'.format(
-                self.__class__.__name__))
+        return name
 
     def release(self):
         '''Abstract method, release of the resource.
@@ -304,9 +301,9 @@ class StateMachine(object):
             def execute(self, handler):
                 return handler()
         # This will make the producer of these signals this state machine
-        self._ENTRY = Signal(ENTRY_SIGNAL)
-        self._EXIT = Signal(EXIT_SIGNAL)
-        self._INIT = Signal(INIT_SIGNAL)
+        self._ENTRY = Signal('enter')
+        self._EXIT = Signal('exit')
+        self._INIT = Signal('init')
         for state_cls in self.state_clss:
             self._pm.add_cls(state_cls, state_cls.super_state)
         self._pm.build()
@@ -581,11 +578,6 @@ class State(ResourceInstance):
         '''Returns the logger of state machine
         '''
         return self.producer.logger
-
-    def format_name(self, name):
-        '''Resource, format the state name.
-        '''
-        return name
 
     def release(self):
         '''Release this resource.

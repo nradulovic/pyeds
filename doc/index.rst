@@ -34,5 +34,3 @@ Source
 .. automodule:: pyeds.coordinator
    :members:
 
-.. automodule:: pyeds.thread_coordinator
-   :members:
