@@ -49,8 +49,6 @@ from . import coordinator
 from . import lib
 
 
-__state_machines = {}
-
 EVENT_HANDLER_PREFIX = 'on_'
 '''This is default event handler prefix.
 
@@ -268,6 +266,9 @@ class StateMachine(object):
           machine. Default is to use ``logging.getLogger(None)``.
         * should_autostart (:obj:`bool`, *optional*): Should machine start at
           initialization? Default is ``True``.
+        * state_machines (:obj:`dict` of :obj:`str`: :obj:`StateMachine`):
+          Dictionary containing instances of :obj:`StateMachine`. Do not edit
+          this dictionary.
 
     Note:
         The subclass must call the constructor method.
@@ -275,6 +276,7 @@ class StateMachine(object):
     init_state_cls = None
     logger = logging.getLogger(None)
     should_autostart = True
+    state_machines = {}
 
     def __init__(self, queue_size=64, name=None):
         # Ensure that state machine has state classes
@@ -312,8 +314,7 @@ class StateMachine(object):
         # Set the state to initial state
         self._state = self._pm.instance_of(self.init_state_cls)
         # Add itself to global list
-        global __state_machines
-        __state_machines[self.name] = self
+        StateMachine.state_machines[self.name] = self
         # Log info about state machine
         self.logger.debug('{} registered states {}'.format(
             self.name, self.states))
@@ -414,7 +415,7 @@ class StateMachine(object):
             * state_cls (:class:`State`): State class
 
         Returns:
-            :obj:`State`: Instance of *state_cls* class.
+            * :obj:`State`: Instance of *state_cls* class.
 
         Raises:
             * LookupError: If *state_cls* is not a registered state of the
@@ -736,7 +737,7 @@ class Event(lib.Immutable, ResourceInstance):
             * name (:obj:`str`): Unformatted name of the Event.
 
         Returns:
-            :obj:`str`: Formatted name of the Event.
+            * :obj:`str`: Formatted name of the Event.
         '''
         return self._ename_regex.sub(r'_\1', name).lower()
 
@@ -894,12 +895,12 @@ def find_by_name(name):
         * name (:obj:`str`): Name of state machine.
 
     Returns:
-        :obj:`StateMachine`: Instance of found state machine
+        * :obj:`StateMachine`: Instance of found state machine
 
     Raises:
         * LookupError: When a machine with *name* is not found.
     '''
     try:
-        return __state_machines[name]
+        return StateMachine.state_machines[name]
     except KeyError:
         raise LookupError('Found no state machine with \'{}\''.format(name))
