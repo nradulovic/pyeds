@@ -281,17 +281,21 @@ Transitions are started by returning target state class in an event handler.
 Hierarchical Finite State Machines (HFSM)
 =========================================
 
-Please, refer to Wikipedia article for further explanation: 
+Please, refer to Wikipedia article for further explanation:
+
  - https://en.wikipedia.org/wiki/UML_state_machine#Hierarchically_nested_states 
 
 Source
 ======
 
 Source is available at github:
+
  - https://github.com/nradulovic/pyeds
 
 Other links
 ===========
+
+The following is a list of links to tools used by the project:
 
  - Sphinx (used to build documentation): http://www.sphinx-doc.org/en/stable/
  - setuptools (used for installing from source): 
