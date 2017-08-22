@@ -14,11 +14,42 @@ tools are included to define a FSM.
 Installation
 ============
 
+Using PIP
+---------
+
 PyEDS can be installed using the standard Python tool ``pip`` with
 
 .. code-block:: console
 
     pip install pyeds
+
+Installing from source
+----------------------
+
+The easiest way to install PyEDS from source is to use ``setup.py`` script 
+which uses setuptools. For complete documentation about this script please
+refer to setuptools manual.
+
+To install from source issue the following command:
+
+.. code-block:: console
+
+    sudo python setup.py install
+    
+Code documentation
+------------------
+
+Code documentation is bundled together with the source. The documentation
+scripts use Sphinx to generate documents. 
+
+To generate HTML documentation:
+
+.. code-block:: console
+
+    cd doc
+    make html
+    
+This will create HTML documents in ``doc/_build/html`` directory.
 
 How to use it
 =============
@@ -158,8 +189,8 @@ state class which has the same name.
 An event in PyEDS is instanced using class ``Event``. 
 
 The associated parameters with an event are:
- - name of the event
- - producer of event
+ - name of the event: this is a string containing event name.
+ - producer of event: specifies which state machine has generated this event.
  
 Generate an event
 -----------------
@@ -192,19 +223,6 @@ own name. This can be overridden by calling the super constructor:
         def __init__(self):
             super().__init__('my_special_event')
 
-Event class attributes and methods
-----------------------------------
-
-Attributes:
- - ``self.name`` - this is a string containing event name
- - ``self.producer`` - specifies which state machine has generated this event.
- 
-Methods:
- - ``release(self)`` - this method is called by state machine when it has 
-   finished the processing of the event
- - ``execute(self, handler)`` - this method is called by state machine and it 
-   is used to modify how an event handler is called.
-
 Rules about event naming
 ------------------------
 
@@ -235,30 +253,6 @@ State
 A state is a description of the status of a system that is waiting to execute 
 a transition.
 
-State attributes and methods
-----------------------------
-
-Attributes:
- - ``self.name`` - this is a string containing state name
- - ``self.producer`` - specifies which state machine has this state
- - ``self.sm`` - the same as ``self.producer`` but shorter
- - ``self.logger`` - this is the logger which is used by state machine
- - ``self.rm`` - this is ResourceManager for this state
- - ``super_state`` - this is a class attribute that specifies super 
-   state class
- 
-Methods:
- - ``release(self)`` - this method is called by state machine just before
-   state machine termination
- - ``on_entry(self)`` - this method is called by state machine when it has
-   entered the state
- - ``on_exit(self)`` - this method is called by state machine when it has
-   exited the state
- - ``on_init(self)`` - this method is called by state machine when it has
-   entered the state and now needs to initialize the state
- - ``on_unhandled_event`` - this method is called by state machine when
-   no event handlers where found for this state
-   
 State machine
 =============
 
@@ -269,44 +263,6 @@ external events; the change from one state to another is called a state
 transition. An FSM is defined by a list of its states, its initial state, and
 the conditions for each transition.
 
-State machine attributes and methods
-------------------------------------
-
-Attributes:
- - ``init_state_cls`` - Initial state class
- - ``logger`` - Logger instance used by the state machine
- - ``should_autostart`` - Should machine start at initialization. Default is 
-   True.
- 
-Properties:
- - ``depth`` - The depth of state machine states hierarchy
- - ``states`` - List of names of registered states
- - ``state`` - Current state instance
- - ``name`` - String containing the state machine name
-
-Methods:
- - ``instance_of(state_cls)`` - Get the instance of a state class
- - ``event_loop()`` - Event loop
- - ``send(event)`` - Send an event to the state machine
- - ``wait()`` - Wait until the state machine terminates
- - ``do_start()`` - Explicitly start the state machine
- - ``do_terminate()`` - Pend termination of the state machine. After calling
-   this method the state machine may still run. Use ``wait()`` to wait for 
-   state machine until it terminates
- - ``on_start()`` - Gets called by state machine just before the machine starts
- - ``on_terminate()`` - Gets called by state machine just before the termination
- - ``on_exception()`` - Gets called when un-handled exception has occurred.
-
-Arguments:
- - ``queue_size`` - is an integer specifying what is the maximum event queue
-   size. When this argument is not given it defaults to 64. If this argument is 
-   -1 then unlimited queue size will be used.
- - ``name`` - is a string specifying the state machine name. When this argument
-   is not given them the class name is taken as the state machine name.
- 
-If init_state_cls attribute is set then that state will be initial state,
-otherwise, the first declared (registered) state is initial state.
-    
 State transition
 ================
 
@@ -333,3 +289,10 @@ Source
 
 Source is available at github:
  - https://github.com/nradulovic/pyeds
+
+Other links
+===========
+
+ - Sphinx (used to build documentation): http://www.sphinx-doc.org/en/stable/
+ - setuptools (used for installing from source): 
+   https://setuptools.readthedocs.io/en/latest/
