@@ -175,7 +175,7 @@ class ResourceManager(object):
             * resource_name (:obj:`str`): A name of a resource to get.
 
         Returns:
-            :obj:`ResourceInstance`: Resource instance.
+            * :obj:`ResourceInstance`: Resource instance.
 
         Raises:
             * LookupError: When a resource with *resource_name* is not
@@ -785,8 +785,7 @@ class Event(lib.Immutable, ResourceInstance):
             state_machine = find_by_name(state_machine)
             state_machine.send(self)
         else:
-            raise ValueError(
-                'state_machine type {!r} is not supported'.format(
+            raise ValueError('state_machine arg {!r} is invalid'.format(
                     state_machine))
 
 
