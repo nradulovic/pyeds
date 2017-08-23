@@ -6,8 +6,10 @@ News
 0.7.6
 -----
  
- * Code cleanups
+ * Code cleanups and a lot of code documentation
  * Timers use simpler interface
+ * Event class has send() method
+ * StateMachine class has additional attributes
 
 0.7.5
 -----

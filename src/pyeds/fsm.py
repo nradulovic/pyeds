@@ -823,7 +823,9 @@ class After(ResourceInstance):
     def handler(self):
         '''Timeout handler
         '''
-        self.producer.send(Event(self.event_name))
+        event = Event(self.event_name)
+        event.timer = self
+        self.producer.send(event)
 
     def start(self):
         '''Start the timer.

@@ -247,6 +247,33 @@ not allow punctuation characters such as @, $, and % within identifiers.
     ok_event = fsm.Event('some_event_with_long_name')
     bad_event = fsm.Event('you cannot use spaces, @, $ and % here')
 
+Timers
+======
+
+Timers are used to generate time events:
+ - After: Means an event will be generated after elapsed time.
+ - Every: Means an event will be generated every period of time.
+  
+To generate the events use ``After`` and ``Every`` objects::
+
+    blinking = fsm.Every(1.0, 'blink')
+    
+This line will generate an event named `blink` every 1.0 seconds. To stop the  
+generation use::
+
+    blinking.cancel()
+    
+When a timer generates an event it will add new attribute to event called 
+``timer``. With this attribute you can access the originating timer through
+event. This means that you can also stop the timer through an event::
+
+    def on_blink(self, event):
+        event.timer.cancel() # Stop the originating timer
+
+Note:
+ - Since the timers are ``ResourceInstance`` objects, the ``release`` method
+   may be called to stop the timers, too.
+ 
 State
 =====
 
