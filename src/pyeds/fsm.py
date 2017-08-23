@@ -203,7 +203,7 @@ class ResourceInstance(object):
     '''
 
     def __init__(self, name=None):
-        name = name if name is not None else self.__class__.__name__
+        name = name or self.__class__.__name__
         self.name = self.format_name(name)
         self.producer = current()
 
@@ -289,10 +289,10 @@ class StateMachine(object):
                 raise LookupError(
                     'init_state_cls argument \'{!r}\' '
                     'is not a registered state'.format(self.init_state_cls))
-        self._name = name if name is not None else self.__class__.__name__
+        self._name = name or self.__class__.__name__
         self._queue = coordinator.provider.Queue(queue_size)
         self._pm = _PathManager()
-        self._thread = coordinator.provider.Task(self.event_loop, self.name)
+        self._thread = coordinator.provider.Task(self.event_loop, self._name)
         self._thread.sm = self
         self.rm = ResourceManager()
         if self.init_state_cls is None:
