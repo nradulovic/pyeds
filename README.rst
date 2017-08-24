@@ -112,8 +112,8 @@ messages.
 
 The Blinky FSM has 2 states:
 
- - State On
- - State Off
+- State On
+- State Off
  
 ::
 
@@ -192,8 +192,8 @@ An event in PyEDS is instanced using class ``Event``.
 
 The associated parameters with an event are:
 
- - name of the event: this is a string containing event name.
- - producer of event: specifies which state machine has generated this event.
+- name of the event: this is a string containing event name.
+- producer of event: specifies which state machine has generated this event.
  
 Generate an event
 -----------------
@@ -255,8 +255,8 @@ Timers
 
 Timers are used to generate time events:
 
- - After: Means an event will be generated after elapsed time.
- - Every: Means an event will be generated every period of time.
+- After: Means an event will be generated after elapsed time.
+- Every: Means an event will be generated every period of time.
   
 To generate the events use ``After`` and ``Every`` objects::
 
@@ -317,13 +317,13 @@ Source
 
 Source is available at github:
 
- - https://github.com/nradulovic/pyeds
+- https://github.com/nradulovic/pyeds
 
 Other links
 ===========
 
 The following is a list of links to tools used by the project:
 
- - Sphinx (used to build documentation): http://www.sphinx-doc.org/en/stable/
- - setuptools (used for installing from source): 
+- Sphinx (used to build documentation): http://www.sphinx-doc.org/en/stable/
+- setuptools (used for installing from source): 
    https://setuptools.readthedocs.io/en/latest/
