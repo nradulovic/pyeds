@@ -310,7 +310,7 @@ Hierarchical Finite State Machines (HFSM)
 
 Please, refer to Wikipedia article for further explanation:
 
- - https://en.wikipedia.org/wiki/UML_state_machine#Hierarchically_nested_states 
+- https://en.wikipedia.org/wiki/UML_state_machine#Hierarchically_nested_states 
 
 Source
 ======
