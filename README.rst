@@ -326,4 +326,4 @@ The following is a list of links to tools used by the project:
 
 - Sphinx (used to build documentation): http://www.sphinx-doc.org/en/stable/
 - setuptools (used for installing from source): 
-   https://setuptools.readthedocs.io/en/latest/
+  https://setuptools.readthedocs.io/en/latest/
