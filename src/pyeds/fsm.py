@@ -144,6 +144,11 @@ class Resource(object):
           given *category* is the only resource with the specified *name*.
         * releaser (:obj:`function`): A function which will be called when this
           resource is being removed.
+
+    Attributes:
+        * resources (:obj:`dict`): Dictionary contains all resources managed by
+          Resource. It contains additional information like *category* and
+          *name* for fast fetching of resource objects.
     '''
     resources = {}
 
@@ -338,6 +343,7 @@ class StateMachine(Resource):
         super().__init__(
             category='state machine',
             name=name,
+            is_unique=True,
             releaser=self.on_terminate)
         self._queue = coordinator.provider.Queue(queue_size)
         self._pm = _PathManager()
@@ -697,19 +703,20 @@ class State(Resource):
 
 
 class DeclareState(object):
-    '''This is a decorator class which binds a state with a state machine.
+    '''This is a decorator which declares a state for a state machine.
 
-    Use this decorator class to bind states to a state machine.
+    Use this decorator class to declare states for a state machine.
 
     Args:
-        * state_machine_cls (:class:`StateMachine`): A subclass of
-          :class:`StateMachine` class
+        * state_machine_cls (subclass of :class:`StateMachine`): A state
+          machine for which the state is declared for.
 
     Raises:
         * AssertError:
             - When *state_machine_cls* is class :class:`StateMachine`
             - When *state_machine_cls* is not a subclass of
               :class:`StateMachine`
+            - When decorated class is class :class:`State`
             - When decorated class is not a subclass of :class:`State`
     '''
     def __init__(self, state_machine_cls):
@@ -722,6 +729,8 @@ class DeclareState(object):
         self.state_machine_cls = state_machine_cls
 
     def __call__(self, state_cls):
+        assert state_cls is not State, \
+            'Make specific state class from {}'.format(State.__name__)
         assert issubclass(state_cls, State), \
             'The class {} is not subclass of {} class'.format(
                 state_cls.__name__, State.__name__)
@@ -838,7 +847,7 @@ class After(Resource):
     seconds.
 
     This is a timer object that will send the specified event after period of
-    time.
+    elapsed time. The timer will start counting at the time of creation.
 
     Args:
         * every (:obj:`float`): Time period in seconds.
@@ -873,7 +882,8 @@ class After(Resource):
     def start(self):
         '''Start the timer.
 
-        Use this method to start a cancelled timer or a timer that has expired.
+        Use this method to start a cancelled timer or a timer that has been
+        expired.
         '''
         self._timer = coordinator.provider.Timer(self.timeo, self.handler)
         self._timer.start()
@@ -887,6 +897,9 @@ class After(Resource):
 class Every(After):
     '''Send an event to current state machine every time a specified number of
     seconds passes.
+
+    This is a timer object that will send the specified event every period of
+    elapsed time. The timer will start counting at the time of creation.
 
     Args:
         * every (:obj:`float`): Time period in seconds.

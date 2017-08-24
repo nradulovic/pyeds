@@ -19,7 +19,7 @@ Using PIP
 
 PyEDS can be installed using the standard Python tool ``pip`` with
 
-.. code-block:: console
+.. code:: console
 
     pip install pyeds
 
@@ -32,9 +32,9 @@ refer to setuptools manual.
 
 To install from source issue the following command:
 
-.. code-block:: console
+.. code:: console
 
-    sudo python setup.py install
+    python setup.py install
     
 Code documentation
 ------------------
@@ -44,12 +44,19 @@ scripts use Sphinx to generate documents.
 
 To generate HTML documentation:
 
-.. code-block:: console
+.. code:: console
 
     cd doc
     make html
     
 This will create HTML documents in ``doc/_build/html`` directory.
+
+The documentation can be accessed via Python interpreter, too.
+
+.. code::
+
+    >>> import pyeds
+    >>> help(pyeds.fsm)
 
 How to use it
 =============
@@ -68,7 +75,7 @@ below) and do the transitions between states. Each FSM must declare it's own
 class which is a subclass of ``StateMachine``. The simplest way is to just
 declare an empty class which inherits the class ``StateMachine``:
 
-.. code:: python
+.. code::
 
     from pyeds import fsm
     
@@ -84,7 +91,7 @@ with ``DeclareState`` decorator which require state machine as an argument.
 This decorator binds the state class to the specific FSM class. Also, the new 
 state class must be a subclass of ``State`` class:
 
-.. code:: python
+.. code::
 
     @fsm.DeclareState(MyFsm)
     class MyState(fsm.State):
@@ -97,7 +104,7 @@ Instantiating the FSM
 
 To instantiate the FSM class do the following:
 
-.. code:: python
+.. code::
 
     my_fsm = MyFsm()
     
@@ -129,7 +136,7 @@ The Blinky FSM has 2 states:
 
 The event ``blink`` is used to trigger transitions between the states.
 
-.. code:: python
+.. code::
 
     from pyeds import fsm
 
@@ -192,8 +199,8 @@ An event in PyEDS is instanced using class ``Event``.
 
 The associated parameters with an event are:
 
-- name of the event: this is a string containing event name.
-- producer of event: specifies which state machine has generated this event.
+- Name of the event: this is a string containing event name.
+- Owner of event: specifies which state machine has generated this event.
  
 Generate an event
 -----------------
@@ -201,14 +208,14 @@ Generate an event
 To generate a new event just instantiate ``Event`` class with event name as
 parameter:
 
-.. code:: python
+.. code::
 
     new_event = fsm.Event('my_special_event')
 
 Alternative way is to first declare a new event class and instantiate this
 derived class:
 
-.. code:: python
+.. code::
 
     class MySpecialEvent(fsm.Event):
         pass
@@ -219,7 +226,7 @@ derived class:
 In this case base ``Event`` class will implicitly take the name of the class as 
 own name. This can be overridden by calling the super constructor:
 
-.. code:: python
+.. code::
 
     # This event has the exact same name as the above one
     class DerivedEvent(fsm.Event):
@@ -245,7 +252,7 @@ A Python identifier starts with a letter A to Z or a to z or an underscore (_)
 followed by zero or more letters, underscores and digits (0 to 9). Python does 
 not allow punctuation characters such as @, $, and % within identifiers. 
 
-.. code:: python
+.. code::
 
     ok_event = fsm.Event('some_event_with_long_name')
     bad_event = fsm.Event('you cannot use spaces, @, $ and % here')
@@ -258,18 +265,24 @@ Timers are used to generate time events:
 - After: Means an event will be generated after elapsed time.
 - Every: Means an event will be generated every period of time.
   
-To generate the events use ``After`` and ``Every`` objects::
+To generate the events use ``After`` and ``Every`` objects:
+
+.. code::
 
     blinking = fsm.Every(1.0, 'blink')
     
 This line will generate an event named `blink` every 1.0 seconds. To stop the  
-generation use::
+generation use:
+
+.. code::
 
     blinking.cancel()
     
 When a timer generates an event it will add new attribute to event called 
 ``timer``. With this attribute you can access the originating timer through
-event. This means that you can also stop the timer through an event::
+event. This means that you can also stop the timer through an event:
+
+.. code::
 
     def on_blink(self, event):
         event.timer.cancel() # Stop the originating timer
@@ -299,7 +312,7 @@ is received.
 
 Transitions are started by returning target state class in an event handler.
 
-.. code:: python
+.. code::
  
     def on_some_event(self, event):
         do_some_stuff()
@@ -324,6 +337,6 @@ Other links
 
 The following is a list of links to tools used by the project:
 
-- Sphinx (used to build documentation): http://www.sphinx-doc.org/en/stable/
-- setuptools (used for installing from source): 
+- *Sphinx* (used to build documentation): http://www.sphinx-doc.org/en/stable/
+- *setuptools* (used for installing from source): 
   https://setuptools.readthedocs.io/en/latest/
