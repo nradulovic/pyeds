@@ -56,9 +56,9 @@ How to use it
 
 The basic routine to create a state machine is the following:
 
- 1) Declare a FSM class 
- 2) Declare all state classes
- 3) Instantiate FSM class
+1) Declare a FSM class 
+2) Declare all state classes
+3) Instantiate FSM class
  
 Declaring a FSM class
 ---------------------
