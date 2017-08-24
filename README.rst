@@ -53,7 +53,7 @@ This will create HTML documents in ``doc/_build/html`` directory.
 
 The documentation can be accessed via Python interpreter, too.
 
-.. code::
+.. code:: python
 
     >>> import pyeds
     >>> help(pyeds.fsm)
@@ -75,7 +75,7 @@ below) and do the transitions between states. Each FSM must declare it's own
 class which is a subclass of ``StateMachine``. The simplest way is to just
 declare an empty class which inherits the class ``StateMachine``:
 
-.. code::
+.. code:: python
 
     from pyeds import fsm
     
@@ -91,7 +91,7 @@ with ``DeclareState`` decorator which require state machine as an argument.
 This decorator binds the state class to the specific FSM class. Also, the new 
 state class must be a subclass of ``State`` class:
 
-.. code::
+.. code:: python
 
     @fsm.DeclareState(MyFsm)
     class MyState(fsm.State):
@@ -104,7 +104,7 @@ Instantiating the FSM
 
 To instantiate the FSM class do the following:
 
-.. code::
+.. code:: python
 
     my_fsm = MyFsm()
     
@@ -136,7 +136,7 @@ The Blinky FSM has 2 states:
 
 The event ``blink`` is used to trigger transitions between the states.
 
-.. code::
+.. code:: python
 
     from pyeds import fsm
 
@@ -208,14 +208,14 @@ Generate an event
 To generate a new event just instantiate ``Event`` class with event name as
 parameter:
 
-.. code::
+.. code:: python
 
     new_event = fsm.Event('my_special_event')
 
 Alternative way is to first declare a new event class and instantiate this
 derived class:
 
-.. code::
+.. code:: python
 
     class MySpecialEvent(fsm.Event):
         pass
@@ -226,7 +226,7 @@ derived class:
 In this case base ``Event`` class will implicitly take the name of the class as 
 own name. This can be overridden by calling the super constructor:
 
-.. code::
+.. code:: python
 
     # This event has the exact same name as the above one
     class DerivedEvent(fsm.Event):
@@ -252,7 +252,7 @@ A Python identifier starts with a letter A to Z or a to z or an underscore (_)
 followed by zero or more letters, underscores and digits (0 to 9). Python does 
 not allow punctuation characters such as @, $, and % within identifiers. 
 
-.. code::
+.. code:: python
 
     ok_event = fsm.Event('some_event_with_long_name')
     bad_event = fsm.Event('you cannot use spaces, @, $ and % here')
@@ -267,14 +267,14 @@ Timers are used to generate time events:
   
 To generate the events use ``After`` and ``Every`` objects:
 
-.. code::
+.. code:: python
 
     blinking = fsm.Every(1.0, 'blink')
     
 This line will generate an event named `blink` every 1.0 seconds. To stop the  
 generation use:
 
-.. code::
+.. code:: python
 
     blinking.cancel()
     
@@ -282,7 +282,7 @@ When a timer generates an event it will add new attribute to event called
 ``timer``. With this attribute you can access the originating timer through
 event. This means that you can also stop the timer through an event:
 
-.. code::
+.. code:: python
 
     def on_blink(self, event):
         event.timer.cancel() # Stop the originating timer
@@ -312,7 +312,7 @@ is received.
 
 Transitions are started by returning target state class in an event handler.
 
-.. code::
+.. code:: python
  
     def on_some_event(self, event):
         do_some_stuff()
