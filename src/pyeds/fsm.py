@@ -133,7 +133,7 @@ class _PathManager(object):
 
 
 class Resource(object):
-    '''Resource which is associated with an object
+    '''Resource which is associated with an object.
 
     Args:
         * category (:obj:`str`, *optional*): Is the category of the resource.
@@ -432,28 +432,19 @@ class StateMachine(Resource):
 
     @property
     def depth(self):
-        '''The depth of state machine states hierarchy
-
-        Returns:
-            * int: Hierarchy depth
+        ''':obj:`int`: The depth of state machine states hierarchy
         '''
         return self._pm.depth
 
     @property
     def states(self):
-        '''List of names of registered states
-
-        Returns:
-            * :obj:`list` of :obj:`str`: List of names of registered states
+        ''':obj:`list` of :obj:`str`: List of names of registered states
         '''
         return self._pm.states()
 
     @property
     def state(self):
-        '''Current state instance
-
-        Returns:
-            * :obj:`State`: Instance of current state
+        ''':obj:`State`: Instance of current state
         '''
         return self._state
 
@@ -530,7 +521,8 @@ class StateMachine(Resource):
 
         Args:
             * timeout (:obj:`float`, *optional*): How many seconds to wait for
-              termination.
+              termination. The default is ``None`` which means to wait
+              indefinitely.
         '''
         self._thread.join(timeout)
 
@@ -640,13 +632,13 @@ class State(Resource):
 
     @property
     def sm(self):
-        '''Returns the state machine
+        ''':obj:`StateMachine`: The state machine who is owner of this state.
         '''
         return self.owner
 
     @property
     def logger(self):
-        '''Returns the logger of state machine
+        ''':obj:`Logger`: Logger of the state machine.
         '''
         return self.sm.logger
 
