@@ -55,6 +55,7 @@ How to use it
 =============
 
 The basic routine to create a state machine is the following:
+
  1) Declare a FSM class 
  2) Declare all state classes
  3) Instantiate FSM class
@@ -110,6 +111,7 @@ The following is an example of FSM which is called Blinky. The FSM will print
 messages. 
 
 The Blinky FSM has 2 states:
+
  - State On
  - State Off
  
@@ -189,6 +191,7 @@ state class which has the same name.
 An event in PyEDS is instanced using class ``Event``. 
 
 The associated parameters with an event are:
+
  - name of the event: this is a string containing event name.
  - producer of event: specifies which state machine has generated this event.
  
@@ -251,6 +254,7 @@ Timers
 ======
 
 Timers are used to generate time events:
+
  - After: Means an event will be generated after elapsed time.
  - Every: Means an event will be generated every period of time.
   
@@ -270,10 +274,6 @@ event. This means that you can also stop the timer through an event::
     def on_blink(self, event):
         event.timer.cancel() # Stop the originating timer
 
-Note:
- - Since the timers are ``ResourceInstance`` objects, the ``release`` method
-   may be called to stop the timers, too.
- 
 State
 =====
 
