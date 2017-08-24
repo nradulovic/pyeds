@@ -136,12 +136,17 @@ class Resource(object):
     '''Resource which is associated with an object
 
     Args:
-        * category (:obj:`str`): Is the category of the resource.
-        * name (:obj:`str`): Is the name of the resource.
-        * owner (:obj:`object`): Object which is the owner of the resource.
-        * is_uniqueue (:obj:`bool`): Defines if this resource should be unique
-          in Resource management. By being unique means that a resource in a
-          given *category* is the only resource with the specified *name*.
+        * category (:obj:`str`, *optional*): Is the category of the resource.
+          The default value is `obj`.
+        * name (:obj:`str`, *optional*): Is the name of the resource. The
+          default value is ``None`` which means that the name will be defined
+          by resource class name.
+        * owner (:obj:`object`, *optional*): Object which is the owner of the
+          resource. The default value is ``None``.
+        * is_unique (:obj:`bool`, *optional*): Defines if this resource should
+          be unique in Resource management. By being unique means that a
+          resource in a given *category* is the only resource with the
+          specified *name*. The default value is ``False``.
         * releaser (:obj:`function`): A function which will be called when this
           resource is being removed.
 
@@ -176,7 +181,7 @@ class Resource(object):
 
     @classmethod
     def add_resource(cls, resource):
-        '''Add a resource to resource management
+        '''Add a resource to resource management.
 
         Args:
             * resource (:obj:'Resource'): Add derived class of ``Resource`` to
@@ -248,7 +253,7 @@ class Resource(object):
         '''Remove a resource from resource management.
 
         In the process of removal the resource releaser method will be called
-        if was specified in the constructor initialization.
+        if it was specified in the constructor initialization.
 
         Args:
             * resource (:obj:`Resource`): A resource to be removed from
@@ -273,7 +278,7 @@ class Resource(object):
 
     @classmethod
     def remove_all_resources(cls, owner):
-        '''Remove all resources associated with a owner.
+        '''Remove all resources associated with an owner.
 
         Args:
             * owner (:obj:`object`): Object which is the owner of the resource.
@@ -763,10 +768,10 @@ class Event(lib.Immutable, Resource):
     called the name of events must follow the Python identifier naming rules.
 
     The associated parameters with an event are:
-        * name of the event: as given to constructor or implicitly defined
+        * Name of the event: as given to constructor or implicitly defined
           using class name.
-        * producer of event: state machine which generated this event or
-          ``None`` if the event was generated outside a state machine context.
+        * Owner of event: state machine which generated this event or ``None``
+          if the event was generated outside a state machine context.
 
     Args:
         * name (:obj:`str`, *optional*): Name of the event. When not given the
@@ -820,14 +825,14 @@ class Event(lib.Immutable, Resource):
             * state_machine (:obj:`None`): Send the event to the state machine
               who created this event. This argument is invalid in case when the
               producer of event is not a state machine.
-            * state_machine (:obj:`StateMachine`): State machine object
-            * state_machine (:obj:`str`): State machine name
-            * state_machine (:obj:`Channel`): Event channel
+            * state_machine (:obj:`StateMachine`): State machine object.
+            * state_machine (:obj:`str`): State machine name.
+            * state_machine (:obj:`Channel`): Event channel.
 
         Raises:
-            * ValueError: When state_machine argument is not supported.
-            * LookupError: When state_machine argument is :obj:`str` and there
-              is no state machine with that name.
+            * ValueError: When *state_machine* argument is not supported.
+            * LookupError: When *state_machine* argument is :obj:`str` and
+              there is no state machine with that name.
         '''
         if state_machine is None:
             self.producer.send(self)
@@ -873,7 +878,7 @@ class After(Resource):
         self.start()
 
     def handler(self):
-        '''Timeout handler
+        '''Timeout handler method.
         '''
         event = Event(self.event_name)
         event.timer = self
@@ -915,7 +920,7 @@ class Every(After):
         super().__init__(every, event_name)
 
     def handler(self):
-        '''Timeout handler
+        '''Timeout handler method.
         '''
         super().handler()
         self.start()
