@@ -132,108 +132,152 @@ class _PathManager(object):
         return reversed(self._enter)
 
 
-class ResourceManager(object):
-    '''Resource manager
-
-    This class has the responsibility to keep a list of resource instances (see
-    :obj:`ResourceInstance`).
-    '''
-    def __init__(self):
-        self._resources = {}
-
-    def register(self, resource_instance):
-        '''Register a resource instance
-
-        Args:
-            * resource_instance (:obj:`ResourceInstance`): Resource instance to
-              be added.
-        '''
-        self._resources[resource_instance.name] = resource_instance
-
-    def unregister(self, resource_instance):
-        '''Remove a resource instance
-
-        Args:
-            * resource_instance (:obj:`ResourceInstance`): Resource instance to
-              be removed.
-
-        Raises:
-            * LookupError: When *resource_instance* to be removed is not
-              registered.
-        '''
-        resource_name = resource_instance.name
-        try:
-            del self._resources[resource_name]
-        except KeyError:
-            raise LookupError('Resource {} is not registered'.format(
-                resource_name))
-
-    def get(self, resource_name):
-        '''Get a resource instance by name
-
-        Args:
-            * resource_name (:obj:`str`): A name of a resource to get.
-
-        Returns:
-            * :obj:`ResourceInstance`: Resource instance.
-
-        Raises:
-            * LookupError: When a resource with *resource_name* is not
-              registered.
-        '''
-        try:
-            return self._resources[resource_name]
-        except KeyError:
-            raise LookupError('Resource {} is not registered'.format(
-                resource_name))
-
-    def release_all(self):
-        '''Call the release method in all registered resources
-        '''
-        for resource in self._resources.values():
-            resource.release()
-        self._resources = {}
-
-
-class ResourceInstance(object):
-    '''ResourceInstance which is associated with current state machine
+class Resource(object):
+    '''Resource which is associated with an object
 
     Args:
+        * category (:obj:`str`): Is the category of the resource.
         * name (:obj:`str`): Is the name of the resource.
+        * owner (:obj:`object`): Object which is the owner of the resource.
+        * is_uniqueue (:obj:`bool`): Defines if this resource should be unique
+          in Resource management. By being unique means that a resource in a
+          given *category* is the only resource with the specified *name*.
+        * releaser (:obj:`function`): A function which will be called when this
+          resource is being removed.
     '''
+    resources = {}
 
-    def __init__(self, name=None):
-        name = name or self.__class__.__name__
-        self.name = self.format_name(name)
-        self.producer = current()
+    def __init__(
+            self,
+            category='obj',
+            name=None,
+            owner=None,
+            is_unique=False,
+            releaser=None):
+        self.category = category
+        self.name = name or self.__class__.__name__
+        self.owner = owner
+        self.is_unique = is_unique
+        self._releaser = releaser
 
-    def format_name(self, name):
-        '''Abstract method, format the name of the resource.
+    @classmethod
+    def _build_filter_map(cls):
+        filter_map = {}
+        for category, names in cls.resources.items():
+            for name, instances in names.items():
+                for instance in instances:
+                    filter_map[instance] = (category, name, instance.owner)
+        return filter_map
+
+    @classmethod
+    def add(cls, resource):
+        '''Add a resource to resource management
 
         Args:
-            * name (:obj:`str`): Unformatted resource name as defined in the
-              constructor.
+            * resource (:obj:'Resource'): Add derived class of ``Resource`` to
+              resource management.
+
+        Raises:
+            * ValueError: When this resource is not a unique resource and
+              *is_unique* is ``True``.
+        '''
+        if resource.category not in cls.resources:
+            cls.resources[resource.category] = {}
+        if resource.name not in cls.resources[resource.category]:
+            cls.resources[resource.category][resource.name] = []
+        cls.resources[resource.category][resource.name] += [resource]
+        if resource.is_unique and \
+                len(cls.resources[resource.category][resource.name]) != 1:
+            raise ValueError('{} is not unique resource'.format(resource.name))
+
+    @classmethod
+    def get_instance(cls, category, name):
+        '''Get resources specified by category and name.
+
+        Args:
+            * category (:obj:`str`): Is the category of the resource.
+            * name (:obj:`str`): Is the name of the resource.
 
         Returns:
-            * :obj:`str`: Formatted name of the resource which will be used as
-              final name of the resource.
+            * :obj:`list` of :obj:`Resource`: A list containing all resources
+              that match *category* and *name* constraints.
         '''
-        return name
+        try:
+            return cls.resources[category][name]
+        except KeyError:
+            return []
 
-    def release(self):
-        '''Abstract method, release of the resource.
+    @classmethod
+    def filter(cls, category=None, owner=None, name=None):
+        '''Get resources filtered by category, owner and name.
 
-        Called when someone wants to release (terminate) the resource.
+        Args:
+            * category (:obj:`str`, *optional*): Is the category of the
+              resource. Default is ``None`` which means to match any category.
+            * owner (:obj:`object`, *optional*): Object which is the owner of
+              the resource. Default is ``None`` which means to match any owner.
+            * name (:obj:`str`, *optional*): Is the name of the resource.
+              Default is ``None`` which means to match any name.
 
-        Note:
-            * This method must be implemented by derived class.
+        Returns:
+            * :obj:`list` of :obj:`Resource`: A list containing all resources
+              that match *category*, *owner* and *name* constraints.
         '''
-        raise NotImplementedError(
-            'Abstract method \'release\' in class \'{}\'.'.format(
-                self.__class__.__name__))
+        retval = []
+        for instance, info in cls._build_filter_map().items():
+            i_category, i_name, i_owner = info
+            if category is not None:
+                if i_category != category:
+                    continue
+            if owner is not None:
+                if i_owner != owner:
+                    continue
+            if name is not None:
+                if i_name != name:
+                    continue
+            retval += [instance]
+        return retval
+
+    @classmethod
+    def remove(cls, resource):
+        '''Remove a resource from resource management.
+
+        In the process of removal the resource releaser method will be called
+        if was specified in the constructor initialization.
+
+        Args:
+            * resource (:obj:`Resource`): A resource to be removed from
+              resource management.
+
+        Raises:
+            * LookupError: When a resource is not registered to resource
+              management.
+        '''
+        resources = cls.get_instance(resource.category, resource.name)
+        for idx, resource in enumerate(resources):
+            if resource is resource:
+                if resource._releaser is not None:
+                    resource._releaser()
+                del cls.resources[resource.category][resource.name][idx]
+                if len(cls.resources[resource.category][resource.name]) == 0:
+                    del cls.resources[resource.category][resource.name]
+                if len(cls.resources[resource.category]) == 0:
+                    del cls.resources[resource.category]
+                return
+        raise LookupError('{} is not registered'.format(resource.name))
+
+    @classmethod
+    def remove_all(cls, owner):
+        '''Remove all resources associated with a owner.
+
+        Args:
+            * owner (:obj:`object`): Object which is the owner of the resource.
+        '''
+        for resource in cls.filter(owner=owner):
+            cls.remove(resource)
 
 
-class StateMachine(object):
+class StateMachine(Resource):
     '''This class implements a state machine.
 
     This class is a controller class of state machine.
@@ -266,9 +310,12 @@ class StateMachine(object):
           machine. Default is to use ``logging.getLogger(None)``.
         * should_autostart (:obj:`bool`, *optional*): Should machine start at
           initialization? Default is ``True``.
-        * state_machines (:obj:`dict` of :obj:`str`: :obj:`StateMachine`):
-          Dictionary containing instances of :obj:`StateMachine`. Do not edit
-          this dictionary.
+
+    Raises:
+        * AttributeError: If this state machine has no states declared with
+          :obj:`DeclareState` decorator.
+        * ValueError: If init_state_cls is not a declared state of this state
+          machine.
 
     Note:
         The subclass must call the constructor method.
@@ -276,7 +323,6 @@ class StateMachine(object):
     init_state_cls = None
     logger = logging.getLogger(None)
     should_autostart = True
-    state_machines = {}
 
     def __init__(self, queue_size=64, name=None):
         # Ensure that state machine has state classes
@@ -286,15 +332,17 @@ class StateMachine(object):
         # init_state is a registered state
         if self.init_state_cls is not None:
             if self.init_state_cls not in self.state_clss:
-                raise LookupError(
+                raise ValueError(
                     'init_state_cls argument \'{!r}\' '
                     'is not a registered state'.format(self.init_state_cls))
-        self._name = name or self.__class__.__name__
+        super().__init__(
+            category='state machine',
+            name=name,
+            releaser=self.on_terminate)
         self._queue = coordinator.provider.Queue(queue_size)
         self._pm = _PathManager()
-        self._thread = coordinator.provider.Task(self.event_loop, self._name)
+        self._thread = coordinator.provider.Task(self.event_loop, self.name)
         self._thread.sm = self
-        self.rm = ResourceManager()
         if self.init_state_cls is None:
             self.init_state_cls = self.state_clss[0]
         if self.should_autostart:
@@ -313,8 +361,8 @@ class StateMachine(object):
         self._pm.build()
         # Set the state to initial state
         self._state = self._pm.instance_of(self.init_state_cls)
-        # Add itself to global list
-        StateMachine.state_machines[self.name] = self
+        # Add itself to Resource
+        Resource.add(self)
         # Log info about state machine
         self.logger.debug('{} registered states {}'.format(
             self.name, self.states))
@@ -362,7 +410,7 @@ class StateMachine(object):
             # Exit the path
             for exit_state in self._pm.exit_iterator():
                 self._exec_state(exit_state, self._EXIT)
-                exit_state.rm.release_all()
+                Resource.remove_all(exit_state)
             # Enter the path
             for enter_state in self._pm.enter_iterator():
                 self._exec_state(enter_state, self._ENTRY)
@@ -370,7 +418,6 @@ class StateMachine(object):
             current_state = new_state
             new_state, _ = self._exec_state(current_state, self._INIT)
             self._state = current_state
-        event.release()
 
     @property
     def depth(self):
@@ -398,15 +445,6 @@ class StateMachine(object):
             * :obj:`State`: Instance of current state
         '''
         return self._state
-
-    @property
-    def name(self):
-        '''String containing the state machine name
-
-        Returns:
-            * :obj:`str`: State machine name
-        '''
-        return self._name
 
     def instance_of(self, state_cls):
         '''Get the instance of state class
@@ -445,10 +483,12 @@ class StateMachine(object):
             # Check should we exit
             if event is None:
                 self._queue.task_done()
-                self.on_terminate()
+                Resource.remove_all(self)
+                Resource.remove(self)
                 self.logger.info('{} terminated'.format(self.name))
                 return
             self._dispatch(event)
+            Resource.remove(event)
             self._queue.task_done()
 
     def send(self, event, block=True, timeout=None):
@@ -471,6 +511,7 @@ class StateMachine(object):
             * BufferError: Raised when queue buffer is full and timeout has
               passed (if given), otherwise, it raises it immediately when full.
         '''
+        Resource.add(event)
         self._queue.put(event, block, timeout)
 
     def wait(self, timeout=None):
@@ -518,7 +559,7 @@ class StateMachine(object):
 
     def on_terminate(self):
         '''Gets called by state machine just before the termination'''
-        self.rm.release_all()
+        pass
 
     def on_exception(self, exc, state, event, msg):
         '''Gets called when un-handled state exception has occurred
@@ -539,7 +580,7 @@ class StateMachine(object):
             event.name)
 
 
-class State(ResourceInstance):
+class State(Resource):
     '''This class implements a state.
 
     Each state is represented by a class derived from this class. Every method
@@ -577,31 +618,20 @@ class State(ResourceInstance):
 
     def __init__(self):
         # Setup resource instance
-        super(State, self).__init__()
-        # Add self to SM (producer) ResourceManager
-        self.producer.rm.register(self)
-        # Setup resource manager
-        self.rm = ResourceManager()
+        super().__init__(category='state', owner=current())
+        Resource.add(self)
 
     @property
     def sm(self):
         '''Returns the state machine
         '''
-        return self.producer
+        return self.owner
 
     @property
     def logger(self):
         '''Returns the logger of state machine
         '''
-        return self.producer.logger
-
-    def release(self):
-        '''Release this resource.
-
-        This method is called when state machine dispatcher wants to recycle
-        the state (during termination).
-        '''
-        pass
+        return self.sm.logger
 
     def on_entry(self):
         '''State "entry" event handler
@@ -686,7 +716,7 @@ class DeclareState(object):
         return state_cls
 
 
-class Event(lib.Immutable, ResourceInstance):
+class Event(lib.Immutable, Resource):
     '''Event
 
     An event is the only means of communication between state machines. Each
@@ -718,6 +748,10 @@ class Event(lib.Immutable, ResourceInstance):
           appropriate format.
     '''
     _ename_regex = re.compile('((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))')
+
+    def __init__(self, name=None):
+        name = name or self.format_name(self.__class__.__name__)
+        super().__init__(category='event', name=name, owner=current())
 
     def format_name(self, name):
         '''Resource, format the name.
@@ -753,14 +787,6 @@ class Event(lib.Immutable, ResourceInstance):
         '''
         return handler(self)
 
-    def release(self):
-        '''Release this resource.
-
-        This method is called when state machine dispatcher wants to recycle
-        the event.
-        '''
-        pass
-
     def send(self, state_machine=None):
         '''Send this event to state machine.
 
@@ -782,14 +808,15 @@ class Event(lib.Immutable, ResourceInstance):
         elif isinstance(state_machine, StateMachine):
             state_machine.send(self)
         elif isinstance(state_machine, str):
-            state_machine = find_by_name(state_machine)
+            state_machine = Resource.get_instance(
+                'state_machine', state_machine)
             state_machine.send(self)
         else:
             raise ValueError('state_machine arg {!r} is invalid'.format(
                     state_machine))
 
 
-class After(ResourceInstance):
+class After(Resource):
     '''Send an event to current state machine after a specified number of
     seconds
 
@@ -808,12 +835,11 @@ class After(ResourceInstance):
     def __init__(self, after, event_name, is_local=False):
         name = '{}.{}.{}'.format(self.__class__.__name__, event_name, after)
         # Setup resource instance
-        super(After, self).__init__(name=name)
-        # Add your self to state or state machine resource manager
-        if is_local:
-            self.producer.state.rm.register(self)
-        else:
-            self.producer.rm.register(self)
+        super().__init__(
+            category='timer',
+            name=name,
+            owner=current().state if is_local else current(),
+            releaser=self.cancel)
         # Save arguments
         self.timeo = after
         self.event_name = event_name
@@ -834,18 +860,10 @@ class After(ResourceInstance):
         self._timer = coordinator.provider.Timer(self.timeo, self.handler)
         self._timer.start()
 
-    def release(self):
-        '''Release this resource.
-
-        This method is called when state machine dispatcher wants to recycle
-        the timer.
-        '''
-        self._timer.cancel()
-
     def cancel(self):
         '''Cancel a running timer
         '''
-        self.release()
+        self._timer.cancel()
 
 
 class Every(After):
@@ -887,21 +905,3 @@ def current():
         return current.sm
     except AttributeError:
         pass
-
-
-def find_by_name(name):
-    '''Find a state machine by name
-
-    Args:
-        * name (:obj:`str`): Name of state machine.
-
-    Returns:
-        * :obj:`StateMachine`: Instance of found state machine
-
-    Raises:
-        * LookupError: When a machine with *name* is not found.
-    '''
-    try:
-        return StateMachine.state_machines[name]
-    except KeyError:
-        raise LookupError('Found no state machine with \'{}\''.format(name))
