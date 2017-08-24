@@ -170,7 +170,7 @@ class Resource(object):
         return filter_map
 
     @classmethod
-    def add(cls, resource):
+    def add_resource(cls, resource):
         '''Add a resource to resource management
 
         Args:
@@ -191,7 +191,7 @@ class Resource(object):
             raise ValueError('{} is not unique resource'.format(resource.name))
 
     @classmethod
-    def get_instance(cls, category, name):
+    def get_resources(cls, category, name):
         '''Get resources specified by category and name.
 
         Args:
@@ -208,7 +208,7 @@ class Resource(object):
             return []
 
     @classmethod
-    def filter(cls, category=None, owner=None, name=None):
+    def filter_resources(cls, category=None, owner=None, name=None):
         '''Get resources filtered by category, owner and name.
 
         Args:
@@ -239,7 +239,7 @@ class Resource(object):
         return retval
 
     @classmethod
-    def remove(cls, resource):
+    def remove_resource(cls, resource):
         '''Remove a resource from resource management.
 
         In the process of removal the resource releaser method will be called
@@ -253,7 +253,7 @@ class Resource(object):
             * LookupError: When a resource is not registered to resource
               management.
         '''
-        resources = cls.get_instance(resource.category, resource.name)
+        resources = cls.get_resources(resource.category, resource.name)
         for idx, resource in enumerate(resources):
             if resource is resource:
                 if resource._releaser is not None:
@@ -267,14 +267,14 @@ class Resource(object):
         raise LookupError('{} is not registered'.format(resource.name))
 
     @classmethod
-    def remove_all(cls, owner):
+    def remove_all_resources(cls, owner):
         '''Remove all resources associated with a owner.
 
         Args:
             * owner (:obj:`object`): Object which is the owner of the resource.
         '''
-        for resource in cls.filter(owner=owner):
-            cls.remove(resource)
+        for resource in cls.filter_resources(owner=owner):
+            cls.remove_resource(resource)
 
 
 class StateMachine(Resource):
@@ -362,7 +362,7 @@ class StateMachine(Resource):
         # Set the state to initial state
         self._state = self._pm.instance_of(self.init_state_cls)
         # Add itself to Resource
-        Resource.add(self)
+        Resource.add_resource(self)
         # Log info about state machine
         self.logger.debug('{} registered states {}'.format(
             self.name, self.states))
@@ -410,7 +410,7 @@ class StateMachine(Resource):
             # Exit the path
             for exit_state in self._pm.exit_iterator():
                 self._exec_state(exit_state, self._EXIT)
-                Resource.remove_all(exit_state)
+                Resource.remove_all_resources(exit_state)
             # Enter the path
             for enter_state in self._pm.enter_iterator():
                 self._exec_state(enter_state, self._ENTRY)
@@ -483,12 +483,12 @@ class StateMachine(Resource):
             # Check should we exit
             if event is None:
                 self._queue.task_done()
-                Resource.remove_all(self)
-                Resource.remove(self)
+                Resource.remove_all_resources(self)
+                Resource.remove_resource(self)
                 self.logger.info('{} terminated'.format(self.name))
                 return
             self._dispatch(event)
-            Resource.remove(event)
+            Resource.remove_resource(event)
             self._queue.task_done()
 
     def send(self, event, block=True, timeout=None):
@@ -511,7 +511,7 @@ class StateMachine(Resource):
             * BufferError: Raised when queue buffer is full and timeout has
               passed (if given), otherwise, it raises it immediately when full.
         '''
-        Resource.add(event)
+        Resource.add_resource(event)
         self._queue.put(event, block, timeout)
 
     def wait(self, timeout=None):
@@ -609,6 +609,12 @@ class State(Resource):
             return SomeOtherState # Note: return a class object,
                                   # not instance object
 
+    Objects created in the current state may be local or non-local to the
+    state. When an object is local it will exist only while the state machine
+    is in the current state. When state machine transitions to any state (
+    including the current one) all object local to current state will be
+    deleted.
+
     Attributes:
         * super_state (:class:`State`): The super state of this state. By
           default is set to ``None`` which means that this state has no super
@@ -619,7 +625,7 @@ class State(Resource):
     def __init__(self):
         # Setup resource instance
         super().__init__(category='state', owner=current())
-        Resource.add(self)
+        Resource.add_resource(self)
 
     @property
     def sm(self):
@@ -632,6 +638,17 @@ class State(Resource):
         '''Returns the logger of state machine
         '''
         return self.sm.logger
+
+    def set_local(self, resource):
+        '''Set a resource as local to this state.
+
+        Local object exist only while the state machine is in current state.
+
+        Args:
+            * resource (:obj:`Resource`): Resource which will be local to this
+              state.
+        '''
+        resource.owner = self
 
     def on_entry(self):
         '''State "entry" event handler
@@ -808,7 +825,7 @@ class Event(lib.Immutable, Resource):
         elif isinstance(state_machine, StateMachine):
             state_machine.send(self)
         elif isinstance(state_machine, str):
-            state_machine = Resource.get_instance(
+            state_machine = Resource.get_resources(
                 'state_machine', state_machine)
             state_machine.send(self)
         else:
@@ -818,13 +835,14 @@ class Event(lib.Immutable, Resource):
 
 class After(Resource):
     '''Send an event to current state machine after a specified number of
-    seconds
+    seconds.
+
+    This is a timer object that will send the specified event after period of
+    time.
 
     Args:
         * every (:obj:`float`): Time period in seconds.
         * event_name (:obj:`str`): Name of event.
-        * is_local (:obj:`bool`, *optional*): creates the time object which is
-          local to calling state. Default is ``False`` which means non local.
 
     Example:
         In order to send the event called 'blink' to itself after 10 seconds
@@ -832,13 +850,13 @@ class After(Resource):
 
             fsm.After(10.0, 'blink')
     '''
-    def __init__(self, after, event_name, is_local=False):
+    def __init__(self, after, event_name):
         name = '{}.{}.{}'.format(self.__class__.__name__, event_name, after)
         # Setup resource instance
         super().__init__(
             category='timer',
             name=name,
-            owner=current().state if is_local else current(),
+            owner=current(),
             releaser=self.cancel)
         # Save arguments
         self.timeo = after
@@ -873,8 +891,6 @@ class Every(After):
     Args:
         * every (:obj:`float`): Time period in seconds.
         * event_name (:obj:`str`): Name of event.
-        * is_local (:obj:`bool`, *optional*): creates the time object which is
-          local to calling state. Default is ``False`` which means non local.
 
     Example:
         In order to send the event called 'blink' to itself every 10 seconds
@@ -882,8 +898,8 @@ class Every(After):
 
             fsm.Every(10.0, 'blink')
     '''
-    def __init__(self, every, event_name, is_local=False):
-        super().__init__(every, event_name, is_local=is_local)
+    def __init__(self, every, event_name):
+        super().__init__(every, event_name)
 
     def handler(self):
         '''Timeout handler
