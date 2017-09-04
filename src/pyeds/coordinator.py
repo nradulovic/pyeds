@@ -26,7 +26,7 @@ provider = None
 
 Provider = collections.namedtuple(
     'Provider',
-    ['Task', 'Timer', 'Queue', 'current'])
+    ['Task', 'Timer', 'Lock', 'Queue', 'current'])
 
 
 def set_provider(name):
@@ -76,6 +76,7 @@ try:
     providers['std'] = Provider(
         Task=StdTask,
         Timer=StdTimer,
+        Lock=threading.Lock,
         Queue=StdQueue,
         current=threading.current_thread)
 

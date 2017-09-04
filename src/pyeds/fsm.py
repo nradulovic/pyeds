@@ -169,6 +169,7 @@ class Resource(object):
         self.owner = owner
         self.is_unique = is_unique
         self._releaser = releaser
+        Resource._lock = coordinator.provider.Lock()
 
     @classmethod
     def _build_filter_map(cls):
@@ -191,13 +192,14 @@ class Resource(object):
             * ValueError: When this resource is not a unique resource and
               *is_unique* is ``True``.
         '''
-        if resource.category not in cls.resources:
-            cls.resources[resource.category] = {}
-        if resource.name not in cls.resources[resource.category]:
-            cls.resources[resource.category][resource.name] = []
-        cls.resources[resource.category][resource.name] += [resource]
-        if resource.is_unique and \
-                len(cls.resources[resource.category][resource.name]) != 1:
+        with cls._lock:
+            if resource.category not in cls.resources:
+                cls.resources[resource.category] = {}
+            if resource.name not in cls.resources[resource.category]:
+                cls.resources[resource.category][resource.name] = []
+            cls.resources[resource.category][resource.name] += [resource]
+            instances = len(cls.resources[resource.category][resource.name])
+        if resource.is_unique and instances > 1:
             raise ValueError('{} is not unique resource'.format(resource.name))
 
     @classmethod
@@ -263,17 +265,18 @@ class Resource(object):
             * LookupError: When a resource is not registered to resource
               management.
         '''
-        resources = cls.get_resources(resource.category, resource.name)
-        for idx, resource in enumerate(resources):
-            if resource is resource:
-                if resource._releaser is not None:
-                    resource._releaser()
-                del cls.resources[resource.category][resource.name][idx]
-                if len(cls.resources[resource.category][resource.name]) == 0:
-                    del cls.resources[resource.category][resource.name]
-                if len(cls.resources[resource.category]) == 0:
-                    del cls.resources[resource.category]
-                return
+        with cls._lock:
+            resources = cls.get_resources(resource.category, resource.name)
+            for idx, resource in enumerate(resources):
+                if resource is resource:
+                    if resource._releaser is not None:
+                        resource._releaser()
+                    del cls.resources[resource.category][resource.name][idx]
+                    if not cls.resources[resource.category][resource.name]:
+                        del cls.resources[resource.category][resource.name]
+                    if not cls.resources[resource.category]:
+                        del cls.resources[resource.category]
+                    return
         raise LookupError('{} is not registered'.format(resource.name))
 
     @classmethod
@@ -363,7 +366,7 @@ class StateMachine(Resource):
         class Signal(Event):
             def execute(self, handler):
                 return handler()
-        # This will make the producer of these signals this state machine
+        # This will make the owner of these signals this state machine
         self._ENTRY = Signal('entry')
         self._EXIT = Signal('exit')
         self._INIT = Signal('init')
@@ -490,7 +493,10 @@ class StateMachine(Resource):
                 self.logger.info('{} terminated'.format(self.name))
                 return
             self._dispatch(event)
-            Resource.remove_resource(event)
+            try:
+                Resource.remove_resource(event)
+            except LookupError:
+                pass
             self._queue.task_done()
 
     def send(self, event, block=True, timeout=None):
@@ -816,7 +822,7 @@ class Event(lib.Immutable, Resource):
         Args:
             * state_machine (:obj:`None`): Send the event to the state machine
               who created this event. This argument is invalid in case when the
-              producer of event is not a state machine.
+              owner of event is not a state machine.
             * state_machine (:obj:`StateMachine`): State machine object.
             * state_machine (:obj:`str`): State machine name.
             * state_machine (:obj:`Channel`): Event channel.
@@ -827,7 +833,7 @@ class Event(lib.Immutable, Resource):
               there is no state machine with that name.
         '''
         if state_machine is None:
-            self.producer.send(self)
+            self.owner.send(self)
         elif isinstance(state_machine, StateMachine):
             state_machine.send(self)
         elif isinstance(state_machine, str):
@@ -874,7 +880,7 @@ class After(Resource):
         '''
         event = Event(self.event_name)
         event.timer = self
-        self.producer.send(event)
+        self.owner.send(event)
 
     def start(self):
         '''Start the timer.
