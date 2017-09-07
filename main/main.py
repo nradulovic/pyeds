@@ -5,6 +5,7 @@ Created on Jul 7, 2017
 '''
 import unittest
 
+import pyeds
 from pyeds import fsm
 
 import test_events
@@ -12,6 +13,13 @@ import test_simplefsm
 import test_simplehsm
 
 
+class GenericTestCase(unittest.TestCase):
+    def test_get_version(self):
+        self.assertIsInstance(
+            pyeds.__version__, 
+            str, 
+            'Version string is not available')
+        
 class EventTestCase(unittest.TestCase):
     def test_event_class_name(self):
         class MyEvent(fsm.Event):
