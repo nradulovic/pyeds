@@ -1,5 +1,7 @@
+.. image:: https://travis-ci.org/nradulovic/pyeds.svg?branch=master
+    :target: https://travis-ci.org/nradulovic/pyeds
 .. image:: https://coveralls.io/repos/github/nradulovic/pyeds/badge.svg?branch=master
-:target: https://coveralls.io/github/nradulovic/pyeds?branch=master
+    :target: https://coveralls.io/github/nradulovic/pyeds?branch=master
 
 
 **Python Event Driven System**
