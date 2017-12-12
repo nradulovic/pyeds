@@ -1,3 +1,5 @@
+[![Coverage Status](https://coveralls.io/repos/github/nradulovic/pyeds/badge.svg?branch=master)](https://coveralls.io/github/nradulovic/pyeds?branch=master)
+
 **Python Event Driven System**
 
 .. contents:: Table of contents
