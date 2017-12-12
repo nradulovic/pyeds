@@ -7,4 +7,4 @@ python:
   - "3.6"
 # command to run tests
 script:
-  - python3 main/main.py # or py.test for Python versions 3.5 and below
+  - PYTHONPATH=src python3 main/main.py # or py.test for Python versions 3.5 and below
