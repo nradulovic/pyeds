@@ -252,11 +252,9 @@ the target state machine will lookup for a method named ``on_toggle`` in the
 current state instance. 
 
 Since the event name directly impacts which state instance method will be called
-the name of events must follow the Python identifier naming rules. 
-
-A Python identifier starts with a letter A to Z or a to z or an underscore (_) 
-followed by zero or more letters, underscores and digits (0 to 9). Python does 
-not allow punctuation characters such as @, $, and % within identifiers. 
+the name of events must follow the Python identifier naming rules; please refer
+to https://docs.python.org/3.3/reference/lexical_analysis.html#identifiers for
+more details.
 
 .. code:: python
 
