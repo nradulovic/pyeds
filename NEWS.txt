@@ -3,8 +3,12 @@
 News
 ====
 
-1.0.0
------
+17.12.0
+-------
+
+ * Added Travis build checking support
+ * Resource class will check if attribute `name` is valid Python identifier
+   and not a reserved word.
 
 0.7.6
 -----
