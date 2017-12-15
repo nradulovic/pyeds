@@ -165,10 +165,11 @@ class Resource(object):
             owner=None,
             is_unique=False,
             releaser=None):
+        name = name or self.__class__.__name__
         if not name.isidentifier() or keyword.iskeyword(name):
             raise ValueError('{} is not proper resource name'.format(name))
         self.category = category
-        self.name = name or self.__class__.__name__
+        self.name = name
         self.owner = owner
         self.is_unique = is_unique
         self._releaser = releaser
