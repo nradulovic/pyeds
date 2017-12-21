@@ -3,7 +3,8 @@
 .. image:: https://coveralls.io/repos/github/nradulovic/pyeds/badge.svg?branch=master
     :target: https://coveralls.io/github/nradulovic/pyeds?branch=master
 .. image:: https://api.codacy.com/project/badge/Grade/baa313c466c64d5d82a24e3d32a9f3a1
-   :alt: Codacy Badge
+    :target: https://www.codacy.com/app/nradulovic/pyeds/dashboard
+    :alt: Codacy Badge
 
 
 **Python Event Driven System**
