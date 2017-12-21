@@ -1,3 +1,5 @@
+.. image:: https://badge.fury.io/py/pyeds.svg
+    :target: https://badge.fury.io/py/pyeds
 .. image:: https://travis-ci.org/nradulovic/pyeds.svg?branch=master
     :target: https://travis-ci.org/nradulovic/pyeds
 .. image:: https://coveralls.io/repos/github/nradulovic/pyeds/badge.svg?branch=master
