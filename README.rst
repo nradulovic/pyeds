@@ -3,14 +3,13 @@
 .. image:: https://coveralls.io/repos/github/nradulovic/pyeds/badge.svg?branch=master
     :target: https://coveralls.io/github/nradulovic/pyeds?branch=master
 .. image:: https://api.codacy.com/project/badge/Grade/baa313c466c64d5d82a24e3d32a9f3a1
-    :target: https://www.codacy.com/app/nradulovic/pyeds/dashboard
+    :target: https://www.codacy.com/app/nradulovic/pyeds?utm_source=github.com&utm_medium=referral&utm_content=nradulovic/pyeds&utm_campaign=badger
     :alt: Codacy Badge
 
 
 **Python Event Driven System**
 
 .. contents:: Table of contents
-   :backlinks: top[![Codacy Badge](https://api.codacy.com/project/badge/Grade/17dcce408e7848949971e978d970c9ba)](https://www.codacy.com/app/nradulovic/pyeds?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=nradulovic/pyeds&amp;utm_campaign=Badge_Grade)
    :local:
 
 Introduction
@@ -347,5 +346,3 @@ The following is a list of links to tools used by the project:
 - *Sphinx* (used to build documentation): http://www.sphinx-doc.org/en/stable/
 - *setuptools* (used for installing from source): 
   https://setuptools.readthedocs.io/en/latest/
-
-   :target: https://www.codacy.com/app/nradulovic/pyeds?utm_source=github.com&utm_medium=referral&utm_content=nradulovic/pyeds&utm_campaign=badger
