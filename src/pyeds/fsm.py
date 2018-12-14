@@ -44,7 +44,6 @@ __author__ = 'Nenad Radulovic <nenad.b.radulovic@gmail.com>'
 
 import re
 import logging
-import keyword
 
 from . import coordinator
 from . import lib
