@@ -170,7 +170,7 @@ The event ``blink`` is used to trigger transitions between the states.
             return StateOn
             
             
-    @fsm.DeclareState(BlinkFsm)
+    @fsm.DeclareState(BlinkyFsm)
     class StateOn(fsm.State):
         def on_entry(self):
             print('on')
@@ -179,7 +179,7 @@ The event ``blink`` is used to trigger transitions between the states.
             return StateOff
             
             
-    @fsm.DeclareState(BlinkFsm)
+    @fsm.DeclareState(BlinkyFsm)
     class StateOff(fsm.State):
         def on_entry(self):
             print('off')
