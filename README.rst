@@ -1,13 +1,20 @@
+.. image:: https://badge.waffle.io/nradulovic/pyeds.svg?columns=all
+    :target: https://waffle.io/nradulovic/pyeds
+    :alt: 'Waffle.io - Columns and their card count' 
+.. image:: https://badge.fury.io/py/pyeds.svg
+    :target: https://badge.fury.io/py/pyeds
 .. image:: https://travis-ci.org/nradulovic/pyeds.svg?branch=master
     :target: https://travis-ci.org/nradulovic/pyeds
 .. image:: https://coveralls.io/repos/github/nradulovic/pyeds/badge.svg?branch=master
     :target: https://coveralls.io/github/nradulovic/pyeds?branch=master
+.. image:: https://api.codacy.com/project/badge/Grade/baa313c466c64d5d82a24e3d32a9f3a1
+    :target: https://www.codacy.com/app/nradulovic/pyeds?utm_source=github.com&utm_medium=referral&utm_content=nradulovic/pyeds&utm_campaign=badger
+    :alt: Codacy Badge
 
 
 **Python Event Driven System**
 
 .. contents:: Table of contents
-   :backlinks: top
    :local:
 
 Introduction
@@ -163,7 +170,7 @@ The event ``blink`` is used to trigger transitions between the states.
             return StateOn
             
             
-    @fsm.DeclareState(BlinkFsm)
+    @fsm.DeclareState(BlinkyFsm)
     class StateOn(fsm.State):
         def on_entry(self):
             print('on')
@@ -172,7 +179,7 @@ The event ``blink`` is used to trigger transitions between the states.
             return StateOff
             
             
-    @fsm.DeclareState(BlinkFsm)
+    @fsm.DeclareState(BlinkyFsm)
     class StateOff(fsm.State):
         def on_entry(self):
             print('off')
