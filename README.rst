@@ -280,14 +280,23 @@ To generate the events use ``After`` and ``Every`` objects:
 
 .. code:: python
 
-    blinking = fsm.Every(1.0, 'blink')
+    @fsm.DeclareState(BlinkyFsm)
+    class Initialization(fsm.State):
+        def on_init(self):
+            self.blinking = fsm.Every(1.0, 'blink')
+            return StateOn
+    
     
 This line will generate an event named `blink` every 1.0 seconds. To stop the  
 generation use:
 
 .. code:: python
 
-    blinking.cancel()
+    @fsm.DeclareState(BlinkyFsm)
+        class StateOn(fsm.State):
+            def on_entry(self):
+                print('on')
+                self.blinking.cancel()
     
 When a timer generates an event it will add new attribute to event called 
 ``timer``. With this attribute you can access the originating timer through
@@ -295,9 +304,12 @@ event. This means that you can also stop the timer through an event:
 
 .. code:: python
 
-    def on_blink(self, event):
-        event.timer.cancel() # Stop the originating timer
-
+    @fsm.DeclareState(BlinkyFsm)
+    class StateOn(fsm.State):
+        def on_blink(self, event):
+            event.timer.cancel() # Stop the originating timer
+            return StateOff
+            
 State
 =====
 
