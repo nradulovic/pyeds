@@ -288,7 +288,7 @@ To generate the events use ``After`` and ``Every`` objects:
     
     
 This line will generate an event named `blink` every 1.0 seconds. To stop the  
-generation use:
+timer use:
 
 .. code:: python
 
@@ -298,9 +298,10 @@ generation use:
                 print('on')
                 self.blinking.cancel()
     
-When a timer generates an event it will add new attribute to event called 
-``timer``. With this attribute you can access the originating timer through
-event. This means that you can also stop the timer through an event:
+Second approach to cancel a running timer is by using event ``timer`` attribute.
+When a timer generates an event it will automatically create event attribute
+called ``timer``. With this attribute you can also access the originating timer
+through event. To stop the timer through an event see the example below:
 
 .. code:: python
 
