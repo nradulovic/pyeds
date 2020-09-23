@@ -1,6 +1,3 @@
-.. image:: https://badge.waffle.io/nradulovic/pyeds.svg?columns=all
-    :target: https://waffle.io/nradulovic/pyeds
-    :alt: 'Waffle.io - Columns and their card count' 
 .. image:: https://badge.fury.io/py/pyeds.svg
     :target: https://badge.fury.io/py/pyeds
 .. image:: https://travis-ci.org/nradulovic/pyeds.svg?branch=master
