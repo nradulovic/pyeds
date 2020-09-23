@@ -3,6 +3,13 @@
 News
 ====
 
+20.9.0
+------
+
+ * Updated contents of README to reflect current state of the library
+ * Minor changes around build system
+ * Minor library code changes (removed unnecessary name checks)
+
 17.12.0
 -------
 

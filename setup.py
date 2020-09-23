@@ -15,7 +15,7 @@ README = read('README.rst')
 NEWS = read('NEWS.txt')
 
 
-version = '17.12.0'
+version = '20.09.0'
 
 setup(name='pyeds',
     version=version,
