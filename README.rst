@@ -19,7 +19,8 @@ Introduction
 
 This package provides a means to efficiently write finite state machines (FSM) 
 by hand. The focus was to make the API as simple as possible since no GUI 
-tools are included to define a FSM.
+tools are included to define a FSM. This package allows you to create state
+machines with/without state hieararchy.
 
 Installation
 ============
