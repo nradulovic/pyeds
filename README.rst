@@ -315,6 +315,26 @@ State
 A state is a description of the status of a system that is waiting to execute 
 a transition.
 
+State hierarchy
+---------------
+
+Finite-state machine states can have a hierarchy. When you want to declare
+that a state is substate of a state use ``super_state`` attribute of State 
+class:
+
+.. code:: python
+
+    @fsm.DeclareState(MyStateMachine)
+    class SuperState(fsm.State):
+        pass
+        
+    @fsm.DeclareState(MyStateMachine)
+    class SubState(fsm.State):
+        super_state = SuperState
+
+By default ``super_state`` is set to ``None`` which means that the state has 
+no super state, in other words, it is a top level state.
+
 State machine
 =============
 
