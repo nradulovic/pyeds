@@ -28,7 +28,11 @@ To make a release,
   2) Run `python3 setup.py sdist`
   3) Test the generated source distribution in `dist/`
   4) Upload to PyPI: `python3 setup.py sdist upload`
-  5) Increase version (for next release) in:
+  5) Tag the commit with following message: v{YY}.{MM}.{RR} where:
+      * YY is the current year
+      * MM is the current month (including zero)
+      * RR number of release in this year/month (including zero/zeroes)
+  6) Increase version (for next release) in:
       * setup.py
       * doc/conf.py
       * NEWS.txt 
