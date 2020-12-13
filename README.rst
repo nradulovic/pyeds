@@ -315,6 +315,39 @@ State
 A state is a description of the status of a system that is waiting to execute 
 a transition.
 
+State contains function which correspond to events which are to be processed
+by state. When a state is able to process an event it is said that it is 
+sensitive to that event. In the following example state ``State_A`` is
+sensitive to two events:
+
+* `event_1` - Which is handled by ``on_event_1`` function. After the event is
+  processed the state machine will transition to ``State_B``.
+* `event_2` - Which is handled by ``on_event_2`` function. After the event is
+  processed the state machine will remain in ``State_A`` state (not taking the
+  transition).
+
+.. code:: python
+
+    @fsm.DeclareState(MyFsm)
+    class State_A(fsm.State):
+        def on_event_1(self, event):
+            # Process event event_1
+            return State_B
+
+        def on_event_2(self, event):
+            # Peocess event event_2
+
+
+
+State members
+-------------
+
+Each state has the following members:
+
+* ``super_state`` - Specifies the state hierarchy
+* ``sm`` - The state machine who is owner of this state.
+* ``logger`` - Logger of the state machine
+
 State hierarchy
 ---------------
 
@@ -334,6 +367,29 @@ class:
 
 By default ``super_state`` is set to ``None`` which means that the state has 
 no super state, in other words, it is a top level state.
+
+State owner
+-----------
+
+Each state instances is owned by an instance of state machine. The ``sm``
+property allows acccess to the instance of state machine from state instance.
+
+For example, let's say you have FSM with the following definition:
+
+.. code:: python
+
+    class MyFsm(fsm.StateMachine):
+        A_VARIABLE = 13
+
+You can access ``A_VARIABLE`` from any state of the state machine with:
+
+.. code:: python
+
+    @fsm.DeclareState(MyFsm)
+    class MyState(fsm.State):
+        def on_entry(self):
+            print(self.sm.A_VARIABLE)
+
 
 State machine
 =============
@@ -359,6 +415,10 @@ Transitions are started by returning target state class in an event handler.
     def on_some_event(self, event):
         do_some_stuff()
         return SomeOtherState # Note: return a class object, not instance object
+
+
+If event function returns ``None`` then the state machine will not start the
+transition to any state (it will stay in the current one).
 
 Hierarchical Finite State Machines (HFSM)
 =========================================
