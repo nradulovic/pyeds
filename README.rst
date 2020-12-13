@@ -266,6 +266,30 @@ more details.
     ok_event = fsm.Event('some_event_with_long_name')
     bad_event = fsm.Event('you cannot use spaces, @, $ and % here')
 
+Events with parameters
+----------------------
+
+Each event may carry additional parameters describing the event. For example,
+you can create event classes that suit your needs:
+
+.. code:: python
+
+    class AxisButtonPress(fsm.Event):
+        def __init__(self, direction):
+            super().__init__()
+            self.direction = direction
+            
+
+then in some FSM state:
+
+.. code:: python
+
+    @fsm.DeclareState(MyFsm)
+    class Initialization(fsm.State):
+        def on_axis_button_press(self, event):
+            print(event.direction)
+
+
 Timers
 ======
 
