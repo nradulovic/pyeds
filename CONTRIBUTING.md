@@ -16,6 +16,31 @@ Responsibilities
  * Be welcoming to newcomers and encourage diverse new contributors from all backgrounds. See the Python Community Code of Conduct.
 
 
+Setting up development environment
+==================================
+
+It is recomended to use virtual environments. To create an virtual environment
+use:
+
+    python3 -m venv .
+
+To activate it use:
+
+    . bin/activate
+
+Then install the requirements:
+
+    pip install -r requirements/development.txt
+
+To exit the virtual environment just execute:
+
+    deactivate
+
+Next time when you want to continue use virtual environment use:
+
+    . bin/activate
+
+
 Release HOWTO
 =============
 
