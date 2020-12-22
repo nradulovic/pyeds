@@ -7,6 +7,9 @@
 .. image:: https://api.codacy.com/project/badge/Grade/baa313c466c64d5d82a24e3d32a9f3a1
     :target: https://www.codacy.com/app/nradulovic/pyeds?utm_source=github.com&utm_medium=referral&utm_content=nradulovic/pyeds&utm_campaign=badger
     :alt: Codacy Badge
+.. image:: https://readthedocs.org/projects/python-event-driven-system-pyeds/badge/?version=latest
+    :target: https://python-event-driven-system-pyeds.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation status
 
 
 **Python Event Driven System**
@@ -50,17 +53,11 @@ To install from source issue the following command:
 Code documentation
 ------------------
 
+The documentation is available online at `ReadTheDocs`_.  
+
 Code documentation is bundled together with the source. The documentation
-scripts use Sphinx to generate documents. 
-
-To generate HTML documentation:
-
-.. code:: console
-
-    cd doc
-    make html
-    
-This will create HTML documents in ``doc/_build/html`` directory.
+scripts use Sphinx to generate documents. To generate the documentation from
+code please refer to `docs/README.rst`.
 
 The documentation can be accessed via Python interpreter, too.
 
@@ -466,3 +463,5 @@ The following is a list of links to tools used by the project:
 - *Sphinx* (used to build documentation): http://www.sphinx-doc.org/en/stable/
 - *setuptools* (used for installing from source): 
   https://setuptools.readthedocs.io/en/latest/
+
+.. _ReadTheDocs: https://python-event-driven-system-pyeds.readthedocs.io/en/latest/?badge=latest
