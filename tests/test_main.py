@@ -13,7 +13,7 @@ class GenericTestCase(unittest.TestCase):
             pyeds.__version__, 
             str, 
             'Version string is not available')
-        
+
 
 if __name__ == '__main__':
     unittest.main()
