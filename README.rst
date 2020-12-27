@@ -4,9 +4,9 @@
 .. image:: https://travis-ci.com/nradulovic/pyeds.svg?branch=master
     :target: https://travis-ci.com/nradulovic/pyeds
     :alt: Build
-.. image:: https://api.codacy.com/project/badge/Grade/baa313c466c64d5d82a24e3d32a9f3a1
-    :target: https://www.codacy.com/app/nradulovic/pyeds?utm_source=github.com&utm_medium=referral&utm_content=nradulovic/pyeds&utm_campaign=badger
-    :alt: Codacy Badge
+.. image:: https://api.codacy.com/project/badge/Grade/779346cd6005429a9edb952aa5b22730
+   :alt: Codacy Badge
+   :target: https://app.codacy.com/gh/nradulovic/pyeds?utm_source=github.com&utm_medium=referral&utm_content=nradulovic/pyeds&utm_campaign=Badge_Grade
 .. image:: https://readthedocs.org/projects/python-event-driven-system-pyeds/badge/?version=latest
     :target: https://python-event-driven-system-pyeds.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation status
@@ -470,7 +470,3 @@ The following is a list of links to tools used by the project:
 
 .. _ReadTheDocs: https://python-event-driven-system-pyeds.readthedocs.io/en/latest/?badge=latest
 
-
-.. image:: https://api.codacy.com/project/badge/Grade/779346cd6005429a9edb952aa5b22730
-   :alt: Codacy Badge
-   :target: https://app.codacy.com/gh/nradulovic/pyeds?utm_source=github.com&utm_medium=referral&utm_content=nradulovic/pyeds&utm_campaign=Badge_Grade
