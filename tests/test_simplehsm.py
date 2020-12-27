@@ -48,15 +48,19 @@ class StateA(CommonStateClass):
 class StateA1(CommonStateClass):
     super_state = StateA
 
+    # pylint: disable=R0201
     def on_d(self, event):
         return StateA
 
 
 @fsm.DeclareState(SimpleHSM)
 class StateB(CommonStateClass):
+    
+    # pylint: disable=R0201
     def on_a(self, event):
         return StateB
 
+    # pylint: disable=R0201
     def on_c(self, event):
         return StateA
 
