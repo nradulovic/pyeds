@@ -1,7 +1,7 @@
 .. image:: https://badge.fury.io/py/pyeds.svg
     :target: https://badge.fury.io/py/pyeds
-.. image:: https://travis-ci.org/nradulovic/pyeds.svg?branch=master
-    :target: https://travis-ci.org/nradulovic/pyeds
+.. image:: https://travis-ci.com/nradulovic/pyeds.svg?branch=master
+    :target: https://travis-ci.com/nradulovic/pyeds
 .. image:: https://coveralls.io/repos/github/nradulovic/pyeds/badge.svg?branch=master
     :target: https://coveralls.io/github/nradulovic/pyeds?branch=master
 .. image:: https://api.codacy.com/project/badge/Grade/baa313c466c64d5d82a24e3d32a9f3a1
