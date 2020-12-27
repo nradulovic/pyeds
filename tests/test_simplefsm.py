@@ -79,7 +79,7 @@ class StateA7(CommonStateClass):
 
 @fsm.DeclareState(SimpleFSM)
 class InvalidEventlessState(fsm.State):
-    def on_entry(self, event):
+    def on_entry(self):
         # This is invalid state. You can't request for transition on entry.
         return StateA1
 
