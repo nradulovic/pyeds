@@ -44,41 +44,55 @@ class StateA1(CommonStateClass):
 
 @fsm.DeclareState(SimpleFSM)
 class StateA2(CommonStateClass):
+    
+    # pylint: disable=R0201
     def on_a(self, event):
         return StateA3
 
 
 @fsm.DeclareState(SimpleFSM)
 class StateA3(CommonStateClass):
+    
+    # pylint: disable=R0201
     def on_a(self, event):
         return StateA4
 
 
 @fsm.DeclareState(SimpleFSM)
 class StateA4(CommonStateClass):
+    
+    # pylint: disable=R0201
     def on_a(self, event):
         return StateA5
 
 
 @fsm.DeclareState(SimpleFSM)
 class StateA5(CommonStateClass):
+    
+    # pylint: disable=R0201
     def on_a(self, event):
         return StateA6
 
 
 @fsm.DeclareState(SimpleFSM)
 class StateA6(CommonStateClass):
+    
+    # pylint: disable=R0201
     def on_a(self, event):
         return StateA7
 
 
 @fsm.DeclareState(SimpleFSM)
 class StateA7(CommonStateClass):
+    
+    # pylint: disable=R0201
     def on_a(self, event):
         return StateA1
 
 @fsm.DeclareState(SimpleFSM)
 class InvalidEventlessState(fsm.State):
+    
+    # pylint: disable=R0201
     def on_entry(self):
         # This is invalid state. You can't request for transition on entry.
         return StateA1
