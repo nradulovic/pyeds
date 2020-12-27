@@ -469,3 +469,8 @@ The following is a list of links to tools used by the project:
   https://setuptools.readthedocs.io/en/latest/
 
 .. _ReadTheDocs: https://python-event-driven-system-pyeds.readthedocs.io/en/latest/?badge=latest
+
+
+.. image:: https://api.codacy.com/project/badge/Grade/779346cd6005429a9edb952aa5b22730
+   :alt: Codacy Badge
+   :target: https://app.codacy.com/gh/nradulovic/pyeds?utm_source=github.com&utm_medium=referral&utm_content=nradulovic/pyeds&utm_campaign=Badge_Grade
