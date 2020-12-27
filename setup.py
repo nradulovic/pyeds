@@ -29,6 +29,8 @@ setup(name='pyeds',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Operating System :: POSIX :: Linux',
         'Topic :: Software Development :: Libraries'
     ],
@@ -43,8 +45,4 @@ setup(name='pyeds',
     install_requires=[
         # Currently no dependencies
     ],
-    entry_points={
-        'console_scripts':
-            ['pyeds=main:main']
-    }
 )

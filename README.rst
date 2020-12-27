@@ -169,6 +169,7 @@ The event ``blink`` is used to trigger transitions between the states.
     class StateOn(fsm.State):
         def on_entry(self):
             print('on')
+            # on_entry must not return state class as other event handlers
             
         def on_blink(self, event):
             return StateOff
@@ -178,6 +179,7 @@ The event ``blink`` is used to trigger transitions between the states.
     class StateOff(fsm.State):
         def on_entry(self):
             print('off')
+            # on_entry must not return state class as other event handlers
                 
         def on_blink(self, event):
             return StateOn
@@ -316,6 +318,7 @@ timer use:
             def on_entry(self):
                 print('on')
                 self.blinking.cancel()
+                # on_entry must not return state class as other event handlers
     
 Second approach to cancel a running timer is by using event ``timer`` attribute.
 When a timer generates an event it will automatically create event attribute
@@ -410,6 +413,7 @@ You can access ``A_VARIABLE`` from any state of the state machine with:
     class MyState(fsm.State):
         def on_entry(self):
             print(self.sm.A_VARIABLE)
+            # on_entry must not return state class as other event handlers
 
 
 State machine
