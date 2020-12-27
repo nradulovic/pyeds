@@ -10,7 +10,7 @@ import pyeds
 class GenericTestCase(unittest.TestCase):
     def test_get_version(self):
         self.assertIsInstance(
-            pyeds.__version__, 
+            pyeds.__version__,
             str,
             'Version string is not available')
 
