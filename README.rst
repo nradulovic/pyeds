@@ -188,6 +188,7 @@ The event ``blink`` is used to trigger transitions between the states.
     # The final step is to instantiate the FSM class defined in the first step.
 
     blinky_fsm = BlinkyFsm()
+    blinky_fsm.wait(4)  # Wait it for 4 seconds and terminate it
 
 After creation the FSM is automatically put into a running state.
 
@@ -359,7 +360,7 @@ sensitive to two events:
             return State_B
 
         def on_event_2(self, event):
-            # Peocess event event_2
+            # Process event event_2
 
 
 
@@ -425,6 +426,18 @@ given time. The FSM can change from one state to another in response to some
 external events; the change from one state to another is called a state
 transition. An FSM is defined by a list of its states, its initial state, and
 the conditions for each transition.
+
+A state machine is automatically started as soon as they are created. If you don't
+want this set the class attribute ``should_autostart`` to False:
+
+.. code:: python
+    class BlinkyFsm(fsm.StateMachine):
+        should_autostart = False
+
+    blinky_fsm = BlinkyFsm()
+    blinky_fsm.do_start()
+    blinky_fsm.wait(4)  # Wait it for 4 seconds and terminate it
+
 
 State transition
 ================
