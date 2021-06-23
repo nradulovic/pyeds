@@ -434,6 +434,8 @@ want this set the class attribute ``should_autostart`` to False:
 
     class BlinkyFsm(fsm.StateMachine):
         should_autostart = False
+        
+    # Create states here
 
     blinky_fsm = BlinkyFsm()
     blinky_fsm.do_start()
