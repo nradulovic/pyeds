@@ -431,6 +431,7 @@ A state machine is automatically started as soon as they are created. If you don
 want this set the class attribute ``should_autostart`` to False:
 
 .. code:: python
+
     class BlinkyFsm(fsm.StateMachine):
         should_autostart = False
 
