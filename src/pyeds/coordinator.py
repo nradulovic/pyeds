@@ -1,4 +1,4 @@
-'''
+"""
 Coordinator
 ===========
 
@@ -16,7 +16,7 @@ Module details
 --------------
 
 Created on Jul 22, 2017
-'''
+"""
 
 import collections
 
@@ -30,14 +30,14 @@ Provider = collections.namedtuple(
 
 
 def set_provider(name):
-    '''Choose the default provider.
+    """Choose the default provider.
 
     Args:
         * name (:obj:`str`): Name of provider.
 
     Raises:
         * LookupError: When a provider with given name is not registered.
-    '''
+    """
     global provider
 
     try:
@@ -63,7 +63,7 @@ try:
             self._handler = handler
             super().__init__(interval, self.callback)
 
-        def callback(self, *args, **kwargs):
+        def callback(self, *_args, **_kwargs):
             self._handler()
 
     class StdQueue(queue.Queue):
