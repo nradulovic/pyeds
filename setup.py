@@ -12,7 +12,7 @@ def read(file_name):
     return text
 
 README = read('README.rst')
-NEWS = read('NEWS.txt')
+NEWS = read('NEWS.rst')
 
 
 version = '20.09.0'
